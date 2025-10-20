@@ -4,24 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 import { useData } from "@/lib/data-context"
 import { Users, Calendar, DollarSign, TrendingUp } from "lucide-react"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const { clients, appointments } = useData()
 
-  // Calculate statistics
   const activeClients = clients.filter((c) => c.status === "active").length
   const todayAppointments = appointments.filter((a) => {
     const today = new Date().toISOString().split("T")[0]
-    return a.date === today
+    const appointmentDate = new Date(a.startTime).toISOString().split("T")[0]
+    return appointmentDate === today
   }).length
   const totalRevenue = clients.reduce((sum, client) => sum + client.totalSpent, 0)
   const monthlyRevenue = appointments
     .filter((a) => a.status === "completed")
-    .reduce((sum, appointment) => sum + appointment.price, 0)
+    .reduce((sum, appointment) => sum + appointment.totalPrice, 0)
 
-  // Revenue chart data (mock monthly data)
   const revenueData = [
     { month: "Jan", revenue: 12500 },
     { month: "Fev", revenue: 15200 },
@@ -68,13 +67,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Olá, {user?.name}!</h1>
         <p className="text-muted-foreground mt-2">Aqui está um resumo do seu negócio hoje.</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title} className="border-border shadow-sm hover:shadow-md transition-shadow">
@@ -92,34 +89,51 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Revenue Chart */}
       <Card className="border-border shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl font-bold text-foreground">Receita Mensal</CardTitle>
-          <p className="text-sm text-muted-foreground">Evolução da receita nos últimos 6 meses</p>
+          <p className="text-sm text-muted-foreground">Evolução da receita nos últimos 6 meses (dados fictícios)</p>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={revenueData}>
+            <LineChart data={revenueData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
               <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "hsl(var(--background))",
+                  border: "2px solid #9333ea",
                   borderRadius: "8px",
+                  padding: "12px",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
                 }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
+                labelStyle={{ 
+                  color: "hsl(var(--foreground))", 
+                  fontWeight: "600",
+                  marginBottom: "4px"
+                }}
+                itemStyle={{
+                  color: "hsl(var(--foreground))",
+                  fontSize: "14px",
+                  fontWeight: "500"
+                }}
                 formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR")}`, "Receita"]}
               />
-              <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-            </BarChart>
+              <Line 
+                type="monotone" 
+                dataKey="revenue" 
+                stroke="#9333ea"
+                strokeWidth={3}
+                dot={{ fill: "#9333ea", strokeWidth: 2, r: 5, stroke: "#9333ea" }}
+                activeDot={{ r: 7, strokeWidth: 2, fill: "#9333ea", stroke: "#9333ea" }}
+                connectNulls={true}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="border-border shadow-sm">
           <CardHeader>
@@ -134,12 +148,19 @@ export default function DashboardPage() {
                 >
                   <div>
                     <p className="font-medium text-foreground">{appointment.clientName}</p>
-                    <p className="text-sm text-muted-foreground">{appointment.service}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {appointment.serviceVariants?.[0]?.serviceVariantName || "Serviço"}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">{appointment.startTime}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {new Date(appointment.startTime).toLocaleTimeString("pt-BR", { 
+                        hour: "2-digit", 
+                        minute: "2-digit" 
+                      })}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(appointment.date).toLocaleDateString("pt-BR")}
+                      {new Date(appointment.startTime).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                 </div>
