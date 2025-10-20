@@ -23,7 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useData } from "@/lib/data-context"
 import { ClientModal } from "@/components/modals/client-modal"
 import type { Client } from "@/lib/types"
-import { Search, Plus, Mail, Phone, MoreVertical, Edit, Eye, Loader2, AlertCircle, Archive, Download, X, Calendar, MapPin, Clock, Bell, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Plus, Mail, Phone, MoreVertical, Edit, Eye, Loader2, AlertCircle, Archive, Download, X, Calendar, MapPin, Clock, Bell, ChevronLeft, ChevronRight, Users } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
@@ -34,7 +34,6 @@ export default function ClientesPage() {
   const router = useRouter()
   const { clients, deactivateClient, updateClient, isLoading, error, refreshData } = useData()
   const { toast } = useToast()
-
   const [searchTerm, setSearchTerm] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<"create" | "edit" | "view">("create")
@@ -220,10 +219,10 @@ export default function ClientesPage() {
 
   if (isLoading && clients.length === 0) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Carregando clientes...</p>
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando clientes...</p>
         </div>
       </div>
     )
@@ -231,14 +230,12 @@ export default function ClientesPage() {
 
   if (error && clients.length === 0) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Card className="p-6 max-w-md">
+      <div className="flex h-screen items-center justify-center">
+        <Card className="p-8 max-w-md">
           <div className="flex flex-col items-center gap-4 text-center">
             <AlertCircle className="h-12 w-12 text-destructive" />
-            <div>
-              <h3 className="font-semibold text-lg">Erro ao carregar clientes</h3>
-              <p className="text-sm text-muted-foreground mt-1">{error}</p>
-            </div>
+            <h2 className="text-2xl font-semibold">Erro ao carregar clientes</h2>
+            <p className="text-muted-foreground">{error}</p>
             <Button onClick={() => refreshData()} variant="outline">
               Tentar novamente
             </Button>
@@ -249,305 +246,355 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <div className="flex-none p-6 pb-0 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <TooltipProvider>
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Clientes Ativos</h1>
-            <p className="text-muted-foreground">Gerencie sua base de clientes ativos</p>
+            <p className="text-base text-muted-foreground mt-1">
+              Gerencie sua base de clientes ativos
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => router.push('/clientes/inativos')} variant="outline" size="sm">
-              <Archive className="h-4 w-4 mr-2" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button onClick={() => router.push('/clientes/inativos')} variant="outline" size="default" className="w-full sm:w-auto">
+              <Archive className="mr-2 h-4 w-4" />
               Ver Inativos
             </Button>
-            <Button onClick={handleCreate} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={handleCreate} size="default" className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
               Novo Cliente
             </Button>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, email ou telefone..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="pl-10 h-9"
-            />
-          </div>
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-md">
-              <span className="text-sm font-medium">{selectedIds.size} selecionado(s)</span>
-              <Button onClick={handleBulkExport} variant="ghost" size="sm">
-                <Download className="h-4 w-4 mr-1" />
-                Exportar XLSX
-              </Button>
-              <Button onClick={() => setBulkActionDialogOpen(true)} variant="ghost" size="sm">
-                <Archive className="h-4 w-4 mr-1" />
-                Desativar
-              </Button>
-              <Button onClick={handleClearSelection} variant="ghost" size="sm">
-                <X className="h-4 w-4" />
-              </Button>
+        <Card className="p-4 md:p-6">
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, email ou telefone..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="pl-10 h-10"
+              />
             </div>
-          )}
-          {selectedIds.size === 0 && (
-            <div className="text-sm text-muted-foreground flex items-center">
-              {filteredClients.length} de {clients.length} clientes
-            </div>
-          )}
-        </div>
-      </div>
 
-      <div className="flex-1 overflow-hidden p-6 pt-4">
-        <Card className="h-full flex flex-col">
-          <div className="flex-1 overflow-auto">
-            <Table>
-              <TableHeader className="sticky top-0 bg-background z-10">
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={isAllSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Selecionar todos"
-                    />
-                  </TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Nascimento</TableHead>
-                  <TableHead>Cadastro</TableHead>
-                  <TableHead>Total Gasto</TableHead>
-                  <TableHead>Local</TableHead>
-                  <TableHead>Horário</TableHead>
-                  <TableHead>Indicação</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead>Observações</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedClients.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
-                      Nenhum cliente encontrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedClients.map((client, index) => (
-                    <TableRow key={client.id}>
-                      <TableCell>
+            {selectedIds.size > 0 && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary" className="text-base px-3 py-1">
+                    {selectedIds.size} selecionado(s)
+                  </Badge>
+                  <Button onClick={handleClearSelection} variant="ghost" size="sm">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button onClick={handleBulkExport} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar XLSX
+                  </Button>
+                  <Button onClick={() => setBulkActionDialogOpen(true)} variant="ghost" size="sm" className="flex-1 sm:flex-none text-destructive hover:text-destructive">
+                    <Archive className="mr-2 h-4 w-4" />
+                    Desativar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {selectedIds.size === 0 && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  <span>
+                    {filteredClients.length === clients.length 
+                      ? `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'} no total`
+                      : `${filteredClients.length} de ${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg border overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-12">
                         <Checkbox
-                          checked={selectedIds.has(client.id)}
-                          onCheckedChange={(e) => handleSelectOne(client.id, index, e as any)}
-                          onClick={(e) => handleSelectOne(client.id, index, e)}
-                          aria-label={`Selecionar ${client.name}`}
+                          checked={isAllSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Selecionar todos"
+                          className="h-5 w-5"
                         />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {client.name}
-                          {client.marketingConsent && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Bell className="h-3.5 w-3.5 text-green-600" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Consentimento de marketing</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-sm">
-                            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="truncate max-w-[180px]">{client.email || "—"}</span>
+                      </TableHead>
+                      <TableHead className="min-w-[200px] font-semibold">Nome</TableHead>
+                      <TableHead className="min-w-[200px] font-semibold">Contato</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold">Nascimento</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold">Cadastro</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold">Total Gasto</TableHead>
+                      <TableHead className="min-w-[150px] font-semibold">Local</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold">Horário</TableHead>
+                      <TableHead className="min-w-[150px] font-semibold">Indicação</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold">Status</TableHead>
+                      <TableHead className="min-w-[200px] font-semibold">Observações</TableHead>
+                      <TableHead className="w-[100px] font-semibold">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedClients.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={12} className="h-32 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                            <p className="text-muted-foreground">
+                              {searchTerm
+                                ? "Nenhum cliente encontrado com esse critério de busca"
+                                : "Nenhum cliente cadastrado ainda"}
+                            </p>
+                            {!searchTerm && (
+                              <Button onClick={handleCreate} variant="outline" size="sm" className="mt-2">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Adicionar primeiro cliente
+                              </Button>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1.5 text-sm">
-                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>{client.phone}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          {client.birthDate ? formatDate(client.birthDate) : "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {client.registrationDate ? formatDate(client.registrationDate) : "—"}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatCurrency(client.totalSpent)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                          {truncateText(client.serviceLocation, 20)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                          {truncateText(client.preferredSchedule, 15)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {truncateText(client.referralSource, 20)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge 
-                          variant={client.isClient ? "default" : "secondary"} 
-                          className={client.isClient ? "bg-green-600 hover:bg-green-700" : ""}
-                        >
-                          {client.isClient ? "Comprou" : "Não comprou"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {client.notes ? (
-                          <TooltipProvider>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedClients.map((client, index) => (
+                        <TableRow key={client.id} className="hover:bg-muted/50">
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.has(client.id)}
+                              onCheckedChange={(e) => handleSelectOne(client.id, index, e as any)}
+                              onClick={(e) => handleSelectOne(client.id, index, e)}
+                              aria-label={`Selecionar ${client.name}`}
+                              className="h-5 w-5"
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <span>{client.name}</span>
+                              {client.marketingConsent && (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Bell className="h-4 w-4 text-primary" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Consentimento de marketing</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {client.email && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="truncate">{client.email}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 text-sm">
+                                <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span>{client.phone}</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {client.birthDate ? formatDate(client.birthDate) : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {client.registrationDate ? formatDate(client.registrationDate) : "—"}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {formatCurrency(client.totalSpent)}
+                          </TableCell>
+                          <TableCell>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm truncate max-w-[150px] block cursor-help">
-                                  {client.notes}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="truncate">{truncateText(client.serviceLocation, 20)}</span>
+                                </div>
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p>{client.notes}</p>
-                              </TooltipContent>
+                              {client.serviceLocation && client.serviceLocation.length > 20 && (
+                                <TooltipContent>
+                                  <p>{client.serviceLocation}</p>
+                                </TooltipContent>
+                              )}
                             </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleView(client)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver Detalhes
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(client)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeactivateClick(client.id)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Archive className="h-4 w-4 mr-2" />
-                              Desativar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          
-          {totalPages > 1 && (
-            <div className="flex-none flex items-center justify-between px-4 py-3 border-t">
-              <div className="text-sm text-muted-foreground">
-                Página {currentPage} de {totalPages} ({filteredClients.length} clientes)
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                          </TableCell>
+                          <TableCell>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="truncate">{truncateText(client.preferredSchedule, 15)}</span>
+                                </div>
+                              </TooltipTrigger>
+                              {client.preferredSchedule && client.preferredSchedule.length > 15 && (
+                                <TooltipContent>
+                                  <p>{client.preferredSchedule}</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell>
+                            {truncateText(client.referralSource, 20)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={client.isClient ? "default" : "secondary"}>
+                              {client.isClient ? "Comprou" : "Não comprou"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {client.notes ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="truncate max-w-[200px] cursor-help">{client.notes}</p>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p>{client.notes}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                  <span className="sr-only">Abrir menu</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem onClick={() => handleView(client)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver Detalhes
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(client)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeactivateClick(client.id)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Desativar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
-          )}
+
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Página {currentPage} de {totalPages} ({filteredClients.length} {filteredClients.length === 1 ? 'cliente' : 'clientes'})
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
+
+        <ClientModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          mode={modalMode}
+          client={selectedClient}
+        />
+
+        <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Desativar cliente</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja desativar este cliente? Ele não será excluído permanentemente e
+                poderá ser reativado a qualquer momento na seção &quot;Clientes Inativos&quot;.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeactivateConfirm}
+                disabled={isDeactivating}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {isDeactivating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Desativando...
+                  </>
+                ) : (
+                  "Desativar"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={bulkActionDialogOpen} onOpenChange={setBulkActionDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Desativar {selectedIds.size} cliente(s)</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja desativar os {selectedIds.size} clientes selecionados? Eles não serão excluídos permanentemente e
+                poderão ser reativados a qualquer momento na seção &quot;Clientes Inativos&quot;.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleBulkDeactivate}
+                disabled={isDeactivating}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {isDeactivating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Desativando...
+                  </>
+                ) : (
+                  "Desativar"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Desativar cliente</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja desativar este cliente? Ele não será excluído permanentemente e
-              poderá ser reativado a qualquer momento na seção "Clientes Inativos".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeactivateConfirm} disabled={isDeactivating}>
-              {isDeactivating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Desativando...
-                </>
-              ) : (
-                "Desativar"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={bulkActionDialogOpen} onOpenChange={setBulkActionDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Desativar {selectedIds.size} cliente(s)</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja desativar os {selectedIds.size} clientes selecionados? Eles não serão excluídos permanentemente e
-              poderão ser reativados a qualquer momento na seção "Clientes Inativos".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDeactivate} disabled={isDeactivating}>
-              {isDeactivating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Desativando...
-                </>
-              ) : (
-                "Desativar"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <ClientModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        mode={modalMode}
-        client={selectedClient}
-      />
-    </div>
+    </TooltipProvider>
   )
 }
