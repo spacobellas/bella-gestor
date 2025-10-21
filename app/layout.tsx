@@ -4,9 +4,14 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 import { DataProvider } from "@/lib/data-context"
-import { GoogleCalendarProvider } from "@/lib/google-calendar-context"
 import { Toaster } from "@/components/ui/toaster"
-import { Inter, Geist_Mono, Geist as V0_Font_Geist, Geist_Mono as V0_Font_Geist_Mono, Source_Serif_4 as V0_Font_Source_Serif_4 } from 'next/font/google'
+import { 
+  Inter, 
+  Geist_Mono, 
+  Geist as V0_Font_Geist, 
+  Geist_Mono as V0_Font_Geist_Mono, 
+  Source_Serif_4 as V0_Font_Source_Serif_4 
+} from 'next/font/google'
 
 const _geist = V0_Font_Geist({ 
   subsets: ['latin'], 
@@ -23,9 +28,7 @@ const _sourceSerif_4 = V0_Font_Source_Serif_4({
   weight: ["200","300","400","500","600","700","800","900"] 
 })
 
-const _inter = Inter({ 
-  subsets: ["latin"] 
-})
+const _inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Bella Gestor - CRM",
@@ -42,13 +45,11 @@ export default function RootLayout({
       <body className={_inter.className}>
         <AuthProvider>
           <DataProvider>
-            <GoogleCalendarProvider>
-              {children}
-              <Toaster />
-              <Analytics />
-            </GoogleCalendarProvider>
+            {children}
+            <Toaster />
           </DataProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   )

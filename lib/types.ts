@@ -195,7 +195,7 @@ export interface ServiceVariant {
 export interface Appointment {
   id: string
   clientId: string
-  clientName: string
+  clientName?: string
   professionalId: string
   professionalName?: string
   serviceVariants: AppointmentService[]

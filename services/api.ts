@@ -44,7 +44,6 @@ export async function getClientById(id: string): Promise<Client | null> {
       if (error.code === 'PGRST116') {
         return null
       }
-
       const parsedError = parseSupabaseError(error)
       throw new Error(parsedError.description)
     }
@@ -56,7 +55,7 @@ export async function getClientById(id: string): Promise<Client | null> {
   }
 }
 
-export async function createClient(client: Omit<Client, "id">): Promise<Client> {
+export async function createClient(client: Omit<Client, 'id'>): Promise<Client> {
   try {
     const supabaseData = clientToSupabaseClient(client)
     const { data, error } = await supabase
@@ -161,7 +160,7 @@ export async function getActiveClients(): Promise<Client[]> {
       .from('clients')
       .select('*')
       .eq('is_active', true)
-      .order('created_at', { ascending: false })
+      .order('full_name', { ascending: true })
 
     if (error) {
       const parsedError = parseSupabaseError(error)
@@ -216,266 +215,502 @@ export async function searchClients(query: string): Promise<Client[]> {
   }
 }
 
-export async function syncAppointmentToGoogleCalendar(
-  appointment: Appointment,
-  client: Client,
-  accessToken: string,
-  refreshToken: string
-): Promise<string | null> {
+export async function getServices(): Promise<Service[]> {
   try {
-    const calendarEvent = {
-      summary: `Agendamento - ${client.name}`,
-      description: `Cliente: ${client.name}\nTelefone: ${client.phone}\nObservações: ${appointment.notes || 'N/A'}`,
-      location: client.serviceLocation || '',
-      start: {
-        dateTime: new Date(appointment.startTime).toISOString(),
-        timeZone: 'America/Sao_Paulo',
-      },
-      end: {
-        dateTime: new Date(appointment.endTime).toISOString(),
-        timeZone: 'America/Sao_Paulo',
-      },
-      attendees: client.email ? [{ email: client.email }] : [],
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 24 * 60 },
-          { method: 'popup', minutes: 30 },
-        ],
-      },
-    };
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .order('category', { ascending: true })
+      .order('name', { ascending: true })
 
-    const response = await fetch('/api/calendar', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-access-token': accessToken,
-        'x-refresh-token': refreshToken,
-      },
-      body: JSON.stringify(calendarEvent),
-    });
-
-    if (!response.ok) {
-      throw new Error('Erro ao criar evento no Google Calendar');
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      throw new Error(parsedError.description)
     }
 
-    const data = await response.json();
-    return data.id;
+    return (data || []).map(service => ({
+      id: service.id.toString(),
+      name: service.name,
+      description: service.description || '',
+      category: service.category || '',
+      active: service.is_active,
+      createdAt: service.created_at,
+    }))
   } catch (error) {
-    console.error('Erro ao sincronizar com Google Calendar:', error);
-    throw error;
+    console.error('Error in getServices:', error)
+    throw error
   }
 }
 
-export async function updateGoogleCalendarEvent(
-  eventId: string,
-  appointment: Appointment,
-  client: Client,
-  accessToken: string,
-  refreshToken: string
-): Promise<void> {
+export async function getActiveServices(): Promise<Service[]> {
   try {
-    const updates = {
-      summary: `Agendamento - ${client.name}`,
-      description: `Cliente: ${client.name}\nTelefone: ${client.phone}\nObservações: ${appointment.notes || 'N/A'}`,
-      location: client.serviceLocation || '',
-      start: {
-        dateTime: new Date(appointment.startTime).toISOString(),
-        timeZone: 'America/Sao_Paulo',
-      },
-      end: {
-        dateTime: new Date(appointment.endTime).toISOString(),
-        timeZone: 'America/Sao_Paulo',
-      },
-    };
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('is_active', true)
+      .order('category', { ascending: true })
+      .order('name', { ascending: true })
 
-    const response = await fetch('/api/calendar', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-access-token': accessToken,
-        'x-refresh-token': refreshToken,
-      },
-      body: JSON.stringify({ eventId, ...updates }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Erro ao atualizar evento no Google Calendar');
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      throw new Error(parsedError.description)
     }
+
+    return (data || []).map(service => ({
+      id: service.id.toString(),
+      name: service.name,
+      description: service.description || '',
+      category: service.category || '',
+      active: service.is_active,
+      createdAt: service.created_at,
+    }))
   } catch (error) {
-    console.error('Erro ao atualizar evento no Google Calendar:', error);
-    throw error;
+    console.error('Error in getActiveServices:', error)
+    throw error
   }
 }
 
-export async function deleteGoogleCalendarEvent(
-  eventId: string,
-  accessToken: string,
-  refreshToken: string
-): Promise<void> {
+export async function getServiceById(id: string): Promise<Service | null> {
   try {
-    const response = await fetch(`/api/calendar?eventId=${eventId}`, {
-      method: 'DELETE',
-      headers: {
-        'x-access-token': accessToken,
-        'x-refresh-token': refreshToken,
-      },
-    });
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('id', parseInt(id))
+      .single()
 
-    if (!response.ok) {
-      throw new Error('Erro ao deletar evento do Google Calendar');
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null
+      }
+      const parsedError = parseSupabaseError(error)
+      throw new Error(parsedError.description)
+    }
+
+    return {
+      id: data.id.toString(),
+      name: data.name,
+      description: data.description || '',
+      category: data.category || '',
+      active: data.is_active,
+      createdAt: data.created_at,
     }
   } catch (error) {
-    console.error('Erro ao deletar evento do Google Calendar:', error);
-    throw error;
+    console.error('Error in getServiceById:', error)
+    throw error
   }
 }
 
-export async function listGoogleCalendarEvents(
-  startDate: string,
-  endDate: string,
-  accessToken: string,
-  refreshToken: string
-): Promise<any[]> {
+export async function createService(service: Omit<Service, 'id'>): Promise<Service | null> {
   try {
-    const params = new URLSearchParams();
-    if (startDate) params.append('timeMin', startDate);
-    if (endDate) params.append('timeMax', endDate);
+    const { data, error } = await supabase
+      .from('services')
+      .insert([{
+        name: service.name,
+        description: service.description || null,
+        category: service.category || null,
+        is_active: service.active !== undefined ? service.active : true,
+      }])
+      .select()
+      .single()
 
-    const response = await fetch(`/api/calendar?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'x-access-token': accessToken,
-        'x-refresh-token': refreshToken,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Erro ao listar eventos do Google Calendar');
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      const errorObj = new Error(parsedError.description)
+      ;(errorObj as any).title = parsedError.title
+      ;(errorObj as any).code = parsedError.code
+      throw errorObj
     }
 
-    return await response.json();
+    return {
+      id: data.id.toString(),
+      name: data.name,
+      description: data.description || '',
+      category: data.category || '',
+      active: data.is_active,
+      createdAt: data.created_at,
+    }
   } catch (error) {
-    console.error('Erro ao listar eventos do Google Calendar:', error);
-    throw error;
+    console.error('Error in createService:', error)
+    throw error
+  }
+}
+
+export async function updateService(id: string, updates: Partial<Service>): Promise<Service | null> {
+  try {
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
+    
+    if (updates.name !== undefined) updateData.name = updates.name
+    if (updates.description !== undefined) updateData.description = updates.description || null
+    if (updates.category !== undefined) updateData.category = updates.category || null
+    if (updates.active !== undefined) updateData.is_active = updates.active
+
+    const { data, error } = await supabase
+      .from('services')
+      .update(updateData)
+      .eq('id', parseInt(id))
+      .select()
+      .single()
+
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      const errorObj = new Error(parsedError.description)
+      ;(errorObj as any).title = parsedError.title
+      ;(errorObj as any).code = parsedError.code
+      throw errorObj
+    }
+
+    return data ? {
+      id: data.id.toString(),
+      name: data.name,
+      description: data.description || '',
+      category: data.category || '',
+      active: data.is_active,
+      createdAt: data.created_at,
+    } : null
+  } catch (error) {
+    console.error('Error in updateService:', error)
+    throw error
+  }
+}
+
+export async function deleteService(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('services')
+      .delete()
+      .eq('id', parseInt(id))
+
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      const errorObj = new Error(parsedError.description)
+      ;(errorObj as any).title = parsedError.title
+      ;(errorObj as any).code = parsedError.code
+      throw errorObj
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in deleteService:', error)
+    throw error
   }
 }
 
 export async function getAppointments(): Promise<Appointment[]> {
-  console.warn("getAppointments: Not connected to Supabase yet")
-  return []
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        clients!inner(full_name, phone, email)
+      `)
+      .order('start_time', { ascending: true })
+
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      throw new Error(parsedError.description)
+    }
+
+    return (data || []).map(apt => ({
+      id: apt.id.toString(),
+      clientId: apt.client_id.toString(),
+      clientName: apt.clients?.full_name || 'Cliente desconhecido',
+      professionalId: apt.professional_id,
+      serviceVariants: [],
+      startTime: apt.start_time,
+      endTime: apt.end_time,
+      status: apt.status,
+      notes: apt.notes || '',
+      totalPrice: 0,
+      googleCalendarEventId: apt.google_calendar_event_id,
+      createdAt: apt.created_at,
+    }))
+  } catch (error) {
+    console.error('Error in getAppointments:', error)
+    throw error
+  }
 }
 
 export async function getAppointmentById(id: string): Promise<Appointment | null> {
-  console.warn("getAppointmentById: Not connected to Supabase yet")
-  return null
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        clients!inner(full_name, phone, email)
+      `)
+      .eq('id', parseInt(id))
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null
+      }
+      const parsedError = parseSupabaseError(error)
+      throw new Error(parsedError.description)
+    }
+
+    return {
+      id: data.id.toString(),
+      clientId: data.client_id.toString(),
+      clientName: data.clients?.full_name || 'Cliente desconhecido',
+      professionalId: data.professional_id,
+      serviceVariants: [],
+      startTime: data.start_time,
+      endTime: data.end_time,
+      status: data.status,
+      notes: data.notes || '',
+      totalPrice: 0,
+      googleCalendarEventId: data.google_calendar_event_id,
+      createdAt: data.created_at,
+    }
+  } catch (error) {
+    console.error('Error in getAppointmentById:', error)
+    throw error
+  }
 }
 
 export async function getAppointmentsByClient(clientId: string): Promise<Appointment[]> {
-  console.warn("getAppointmentsByClient: Not connected to Supabase yet")
-  return []
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        clients!inner(full_name, phone, email)
+      `)
+      .eq('client_id', parseInt(clientId))
+      .order('start_time', { ascending: true })
+
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      throw new Error(parsedError.description)
+    }
+
+    return (data || []).map(apt => ({
+      id: apt.id.toString(),
+      clientId: apt.client_id.toString(),
+      clientName: apt.clients?.full_name || 'Cliente desconhecido',
+      professionalId: apt.professional_id,
+      serviceVariants: [],
+      startTime: apt.start_time,
+      endTime: apt.end_time,
+      status: apt.status,
+      notes: apt.notes || '',
+      totalPrice: 0,
+      googleCalendarEventId: apt.google_calendar_event_id,
+      createdAt: apt.created_at,
+    }))
+  } catch (error) {
+    console.error('Error in getAppointmentsByClient:', error)
+    throw error
+  }
 }
 
 export async function getAppointmentsByDateRange(startDate: string, endDate: string): Promise<Appointment[]> {
-  console.warn("getAppointmentsByDateRange: Not connected to Supabase yet")
-  return []
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        clients!inner(full_name, phone, email)
+      `)
+      .gte('start_time', startDate)
+      .lte('start_time', endDate)
+      .order('start_time', { ascending: true })
+
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      throw new Error(parsedError.description)
+    }
+
+    return (data || []).map(apt => ({
+      id: apt.id.toString(),
+      clientId: apt.client_id.toString(),
+      clientName: apt.clients?.full_name || 'Cliente desconhecido',
+      professionalId: apt.professional_id,
+      serviceVariants: [],
+      startTime: apt.start_time,
+      endTime: apt.end_time,
+      status: apt.status,
+      notes: apt.notes || '',
+      totalPrice: 0,
+      googleCalendarEventId: apt.google_calendar_event_id,
+      createdAt: apt.created_at,
+    }))
+  } catch (error) {
+    console.error('Error in getAppointmentsByDateRange:', error)
+    throw error
+  }
 }
 
-export async function createAppointment(appointment: Omit<Appointment, "id">): Promise<Appointment | null> {
-  console.warn("createAppointment: Not connected to Supabase yet")
-  return null
+export async function createAppointment(appointment: Omit<Appointment, 'id' | 'clientName'>): Promise<Appointment | null> {
+  try {
+    const appointmentData = {
+      client_id: parseInt(appointment.clientId),
+      professional_id: appointment.professionalId,
+      start_time: appointment.startTime,
+      end_time: appointment.endTime,
+      status: appointment.status,
+      notes: appointment.notes || null,
+      google_calendar_event_id: appointment.googleCalendarEventId || null,
+      created_at: appointment.createdAt || new Date().toISOString(),
+    }
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert([appointmentData])
+      .select(`
+        *,
+        clients!inner(full_name, phone, email)
+      `)
+      .single()
+
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      const errorObj = new Error(parsedError.description)
+      ;(errorObj as any).title = parsedError.title
+      ;(errorObj as any).code = parsedError.code
+      throw errorObj
+    }
+
+    return {
+      id: data.id.toString(),
+      clientId: data.client_id.toString(),
+      clientName: data.clients?.full_name || 'Cliente desconhecido',
+      professionalId: data.professional_id,
+      serviceVariants: [],
+      startTime: data.start_time,
+      endTime: data.end_time,
+      status: data.status,
+      notes: data.notes || '',
+      totalPrice: 0,
+      googleCalendarEventId: data.google_calendar_event_id,
+      createdAt: data.created_at,
+    }
+  } catch (error) {
+    console.error('Error in createAppointment:', error)
+    throw error
+  }
 }
 
 export async function updateAppointment(id: string, updates: Partial<Appointment>): Promise<Appointment | null> {
-  console.warn("updateAppointment: Not connected to Supabase yet")
-  return null
+  try {
+    const updateData: any = {}
+    
+    if (updates.clientId) updateData.client_id = parseInt(updates.clientId)
+    if (updates.professionalId) updateData.professional_id = updates.professionalId
+    if (updates.startTime) updateData.start_time = updates.startTime
+    if (updates.endTime) updateData.end_time = updates.endTime
+    if (updates.status) updateData.status = updates.status
+    if (updates.notes !== undefined) updateData.notes = updates.notes || null
+    if (updates.googleCalendarEventId !== undefined) {
+      updateData.google_calendar_event_id = updates.googleCalendarEventId || null
+    }
+    updateData.updated_at = new Date().toISOString()
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .update(updateData)
+      .eq('id', parseInt(id))
+      .select(`
+        *,
+        clients!inner(full_name, phone, email)
+      `)
+      .single()
+
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      const errorObj = new Error(parsedError.description)
+      ;(errorObj as any).title = parsedError.title
+      ;(errorObj as any).code = parsedError.code
+      throw errorObj
+    }
+
+    return data ? {
+      id: data.id.toString(),
+      clientId: data.client_id.toString(),
+      clientName: data.clients?.full_name || 'Cliente desconhecido',
+      professionalId: data.professional_id,
+      serviceVariants: [],
+      startTime: data.start_time,
+      endTime: data.end_time,
+      status: data.status,
+      notes: data.notes || '',
+      totalPrice: 0,
+      googleCalendarEventId: data.google_calendar_event_id,
+      createdAt: data.created_at,
+    } : null
+  } catch (error) {
+    console.error('Error in updateAppointment:', error)
+    throw error
+  }
 }
 
 export async function deleteAppointment(id: string): Promise<boolean> {
-  console.warn("deleteAppointment: Not connected to Supabase yet")
-  return false
-}
+  try {
+    const { error } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', parseInt(id))
 
-export async function getServices(): Promise<Service[]> {
-  console.warn("getServices: Not connected to Supabase yet")
-  return []
-}
+    if (error) {
+      const parsedError = parseSupabaseError(error)
+      const errorObj = new Error(parsedError.description)
+      ;(errorObj as any).title = parsedError.title
+      ;(errorObj as any).code = parsedError.code
+      throw errorObj
+    }
 
-export async function getActiveServices(): Promise<Service[]> {
-  console.warn("getActiveServices: Not connected to Supabase yet")
-  return []
-}
-
-export async function getServiceById(id: string): Promise<Service | null> {
-  console.warn("getServiceById: Not connected to Supabase yet")
-  return null
-}
-
-export async function createService(service: Omit<Service, "id">): Promise<Service | null> {
-  console.warn("createService: Not connected to Supabase yet")
-  return null
-}
-
-export async function updateService(id: string, updates: Partial<Service>): Promise<Service | null> {
-  console.warn("updateService: Not connected to Supabase yet")
-  return null
-}
-
-export async function deleteService(id: string): Promise<boolean> {
-  console.warn("deleteService: Not connected to Supabase yet")
-  return false
+    return true
+  } catch (error) {
+    console.error('Error in deleteAppointment:', error)
+    throw error
+  }
 }
 
 export async function getServiceVariants(serviceId?: string): Promise<ServiceVariant[]> {
-  console.warn("getServiceVariants: Not connected to Supabase yet")
+  console.warn("getServiceVariants: Not fully implemented yet")
   return []
 }
 
-export async function createServiceVariant(variant: Omit<ServiceVariant, "id">): Promise<ServiceVariant | null> {
-  console.warn("createServiceVariant: Not connected to Supabase yet")
+export async function createServiceVariant(variant: Omit<ServiceVariant, 'id'>): Promise<ServiceVariant | null> {
+  console.warn("createServiceVariant: Not implemented yet")
   return null
 }
 
 export async function getSales(): Promise<Sale[]> {
-  console.warn("getSales: Not connected to Supabase yet")
+  console.warn("getSales: Not implemented yet")
   return []
 }
 
 export async function getSaleById(id: string): Promise<Sale | null> {
-  console.warn("getSaleById: Not connected to Supabase yet")
+  console.warn("getSaleById: Not implemented yet")
   return null
 }
 
 export async function getSaleByAppointmentId(appointmentId: string): Promise<Sale | null> {
-  console.warn("getSaleByAppointmentId: Not connected to Supabase yet")
+  console.warn("getSaleByAppointmentId: Not implemented yet")
   return null
 }
 
-export async function createSale(sale: Omit<Sale, "id">): Promise<Sale | null> {
-  console.warn("createSale: Not connected to Supabase yet")
+export async function createSale(sale: Omit<Sale, 'id'>): Promise<Sale | null> {
+  console.warn("createSale: Not implemented yet")
   return null
 }
 
-export async function updateSaleStatus(
-  id: string,
-  status: SaleStatus,
-  updates?: Partial<Sale>
-): Promise<Sale | null> {
-  console.warn("updateSaleStatus: Not connected to Supabase yet")
+export async function updateSaleStatus(id: string, status: SaleStatus, updates?: Partial<Sale>): Promise<Sale | null> {
+  console.warn("updateSaleStatus: Not implemented yet")
   return null
 }
 
-export async function createPayment(payment: Omit<Payment, "id">): Promise<Payment | null> {
-  console.warn("createPayment: Not connected to Supabase yet")
+export async function createPayment(payment: Omit<Payment, 'id'>): Promise<Payment | null> {
+  console.warn("createPayment: Not implemented yet")
   return null
 }
 
-export async function updatePaymentStatus(
-  id: string,
-  status: PaymentStatus,
-  paidAt?: string
-): Promise<Payment | null> {
-  console.warn("updatePaymentStatus: Not connected to Supabase yet")
+export async function updatePaymentStatus(id: string, status: PaymentStatus, paidAt?: string): Promise<Payment | null> {
+  console.warn("updatePaymentStatus: Not implemented yet")
   return null
 }
 

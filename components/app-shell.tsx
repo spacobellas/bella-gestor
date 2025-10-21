@@ -71,14 +71,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-1">
               {navigation.map((item) => {
-                const isActive = pathname === item.href
+                const active = pathname === item.href
                 return (
                   <li key={item.name}>
                     <Link
                       href={item.href}
                       className={cn(
                         "group flex gap-x-3 rounded-lg p-3 text-sm font-medium leading-6 transition-colors",
-                        isActive
+                        active
                           ? "bg-sidebar-accent text-sidebar-accent-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                       )}
@@ -156,7 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <nav className="flex flex-1 flex-col">
                 <ul role="list" className="flex flex-1 flex-col gap-y-1">
                   {navigation.map((item) => {
-                    const isActive = pathname === item.href
+                    const active = pathname === item.href
                     return (
                       <li key={item.name}>
                         <Link
@@ -164,7 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           onClick={() => setMobileMenuOpen(false)}
                           className={cn(
                             "group flex gap-x-3 rounded-lg p-3 text-sm font-medium leading-6 transition-colors",
-                            isActive
+                            active
                               ? "bg-sidebar-accent text-sidebar-accent-foreground"
                               : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                           )}
