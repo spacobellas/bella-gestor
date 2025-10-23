@@ -7,8 +7,8 @@ import type {
   Sale,
   Payment,
   SaleStatus,
-  PaymentStatus,
 } from "@/lib/types"
+import { PaymentStatus } from "@/lib/types"
 import { supabase } from "@/lib/supabaseClient"
 import { supabaseClientToClient, clientToSupabaseClient } from "@/lib/utils"
 import { parseSupabaseError } from "@/lib/error-handler"
@@ -684,6 +684,52 @@ export async function createPaymentLink(input: {
   if (!resp.ok) throw new Error(out?.error || "Falha ao gerar link")
   // out.url e out.order_nsu retornam; o pending já foi inserido no servidor
   return out
+}
+
+export async function createPayment(payment: Omit<Payment, "id">): Promise<Payment> {
+  try {
+    const payload: any = {
+      sale_id: parseInt(String(payment.saleId), 10),
+      amount: Number(payment.amount),
+      // Em pending, não force um método "link": deixe null e o webhook definirá o método real
+      payment_method: payment.status === PaymentStatus.PENDING
+        ? null
+        : (payment.paymentMethod ?? null),
+      external_transaction_id: payment.externalTransactionId ?? null,
+      payment_link_url: payment.paymentLinkUrl ?? null,
+      status: payment.status as PaymentStatus,
+      paid_at: payment.status === PaymentStatus.PAID
+        ? (payment.paidAt ?? new Date().toISOString())
+        : null,
+    }
+
+    const { data, error } = await supabase
+      .from("payments")
+      .insert([payload])
+      .select("*")
+      .single()
+
+    if (error) {
+      const parsed = parseSupabaseError(error)
+      throw new Error(parsed.description)
+    }
+
+    return {
+      id: String(data.id),
+      saleId: String(data.sale_id),
+      amount: Number(data.amount),
+      paymentMethod: data.payment_method ?? undefined,
+      externalTransactionId: data.external_transaction_id ?? undefined,
+      paymentLinkUrl: data.payment_link_url ?? undefined,
+      status: data.status,
+      paidAt: data.paid_at ?? undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at ?? undefined,
+    } as Payment
+  } catch (e) {
+    console.error("Error in createPayment:", e)
+    throw e
+  }
 }
 
 // Lista apenas serviços ativos (Service.active === true)
