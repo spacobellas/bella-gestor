@@ -79,6 +79,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         variantsData,
         salesData,
         paymentsData,
+        appointmentsData,
       ] = await Promise.all([
         // Ajuste estas chamadas para as funções reais que você já usa no projeto
         api.getActiveClients?.() ?? api.getClients?.(),
@@ -86,6 +87,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         api.getServiceVariants?.(),
         (api as any).getSales?.(),
         (api as any).getPayments?.(),
+        (api as any).getAppointments?.(),
       ])
 
       if (clientsData) setClients(clientsData)
@@ -93,6 +95,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (variantsData) setServiceVariants(variantsData)
       if (salesData) setSales(salesData)
       if (paymentsData) setPayments(paymentsData)
+      if (appointmentsData) setAppointments(appointmentsData)
       setError(null)
     } catch (err: any) {
       const msg = err?.message || "Falha ao carregar dados"

@@ -24,6 +24,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts"
+import type { Sale } from "@/lib/types"
 import { listCalendarEvents } from "@/services/googleCalendarAppsScript"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -48,7 +49,7 @@ interface ServiceStats {
 
 export default function DashboardPage() {
   const user = useAuth()
-  const { clients, appointments, payments } = useData()
+  const { clients, appointments, payments, sales } = useData()
 
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
@@ -140,7 +141,9 @@ export default function DashboardPage() {
     return appointmentDate === today
   }).length
 
-  const totalRevenue = clients.reduce((sum, client) => sum + client.totalSpent, 0)
+  const totalRevenue = (payments || [])
+    .filter(p => p.status === 'paid' && p.paidAt)
+    .reduce((sum, p) => sum + p.amount, 0)
 
   // Receita mensal REAL (últimos 6 meses) a partir de payments com status 'paid' e paidAt
   const now = new Date()
@@ -170,10 +173,36 @@ export default function DashboardPage() {
     return { month: monthLabel, revenue: value }
   })
 
+  const saleById = new Map<string, Sale>((sales || []).map((s: Sale) => [s.id, s]))
+
+  type TopClient = { id: string; name: string; email: string; spent: number; registrationDate: string }
+  const spentByClient = new Map<string, TopClient>()
+
+  for (const p of payments || []) {
+    if (p.status !== "paid" || !p.paidAt) continue
+    const sale = saleById.get(p.saleId)
+    if (!sale) continue
+    const base = clients.find(c => c.id === sale.clientId)
+    const current = spentByClient.get(sale.clientId) || {
+      id: sale.clientId,
+      name: sale.clientName || base?.name || "Cliente",
+      email: base?.email || "",
+      registrationDate: base?.registrationDate || sale.created_at,
+      spent: 0,
+    }
+    current.spent += p.amount
+    spentByClient.set(sale.clientId, current)
+  }
+
+  const topClients = Array.from(spentByClient.values())
+    .sort((a, b) => b.spent - a.spent)
+    .slice(0, 5)
+
   const current = revenueData[revenueData.length - 1]?.revenue ?? 0
   const previous = revenueData[revenueData.length - 2]?.revenue ?? 0
   const growthPercent = previous > 0 ? ((current - previous) / previous) * 100 : 0
   const growthValue = Number(growthPercent.toFixed(1))
+  const growthDisplay = `${growthValue.toFixed(1)}%`
 
   const stats = [
     {
@@ -202,7 +231,7 @@ export default function DashboardPage() {
     },
     {
       title: "Crescimento",
-      value: growthValue,
+      value: growthDisplay,
       icon: TrendingUp,
       description: "vs. mês anterior",
       color: "text-orange-600",
@@ -464,35 +493,29 @@ export default function DashboardPage() {
             <CardTitle className="text-lg font-semibold">Melhores Clientes</CardTitle>
           </CardHeader>
           <CardContent>
-            {clients.length === 0 ? (
+            {topClients.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Users className="h-12 w-12 text-gray-300 mb-3" />
                 <p className="text-gray-500 text-sm">Nenhum cliente cadastrado ainda.</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {clients
-                  .sort((a, b) => b.totalSpent - a.totalSpent)
-                  .slice(0, 5)
-                  .map((client) => (
-                    <div
-                      key={client.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{client.name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{client.email}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-green-600">
-                          R$ {client.totalSpent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {new Date(client.registrationDate).toLocaleDateString("pt-BR")}
-                        </p>
-                      </div>
+                {topClients.map((client) => (
+                  <div key={client.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{client.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{client.email}</p>
                     </div>
-                  ))}
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-green-600">
+                        R$ {client.spent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {new Date(client.registrationDate).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
