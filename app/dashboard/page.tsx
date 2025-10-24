@@ -330,7 +330,7 @@ export default function DashboardPage() {
               <CardTitle className="text-lg font-semibold">Próximos Agendamentos</CardTitle>
               <p className="text-sm text-gray-500 mt-1">Agendamentos da próxima semana</p>
             </div>
-            <Link href="/dashboard/agenda">
+            <Link href="/agenda">
               <Button variant="outline" size="sm">Ver todos</Button>
             </Link>
           </CardHeader>
