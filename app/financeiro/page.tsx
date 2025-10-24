@@ -574,25 +574,30 @@ export default function FinanceiroPage() {
         <p className="text-sm text-muted-foreground">Vendas, pagamentos e links de checkout</p>
       </div>
 
-      {/* Filtros e ações (responsivo, preenche o retângulo) */}
+      {/* Filtros e ações (mobile-first, altamente responsivo) */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <CardContent className="pt-4 sm:pt-6">
+          {/* Filtros */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            {/* Busca */}
             <div className="relative sm:col-span-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                className="pl-9 h-10"
+                className="h-10 w-full pl-9"
                 placeholder="Buscar por cliente, item, ID da venda, método, NSU..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                aria-label="Buscar"
               />
             </div>
 
+            {/* Status */}
             <div>
               <select
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 value={statusFilter}
-                onChange={(e) => setStatusFilter((e.target.value || "") as any)}
+                onChange={(e) => setStatusFilter((e.target.value || '') as any)}
+                aria-label="Status"
               >
                 <option value="">Todos os status</option>
                 <option value={SaleStatus.PENDING}>Pendente</option>
@@ -601,19 +606,23 @@ export default function FinanceiroPage() {
               </select>
             </div>
 
+            {/* Datas */}
             <Input
               type="date"
               className="h-10 w-full"
-              value={dateRange.start || ""}
+              value={dateRange.start || ''}
               onChange={(e) => setDateRange((p) => ({ ...p, start: e.target.value || undefined }))}
+              aria-label="Data inicial"
             />
             <Input
               type="date"
               className="h-10 w-full"
-              value={dateRange.end || ""}
+              value={dateRange.end || ''}
               onChange={(e) => setDateRange((p) => ({ ...p, end: e.target.value || undefined }))}
+              aria-label="Data final"
             />
 
+            {/* Ações rápidas */}
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
@@ -622,72 +631,108 @@ export default function FinanceiroPage() {
                   resetFilters()
                   void refreshAll()
                 }}
+                aria-label="Limpar filtros"
               >
-                <Filter className="h-4 w-4 mr-2" />
-                Limpar
+                <Filter className="mr-2 h-4 w-4" />
+                <span className="md:hidden whitespace-nowrap">Limpar</span>
+                <span className="hidden md:inline">Limpar</span>
               </Button>
-              <Button variant="outline" className="h-10 w-full" onClick={() => void refreshAll()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
+              <Button
+                variant="outline"
+                className="h-10 w-full"
+                onClick={() => void refreshAll()}
+                aria-label="Atualizar"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                <span className="md:hidden whitespace-nowrap">Atualiz.</span>
+                <span className="hidden md:inline">Atualizar</span>
               </Button>
             </div>
           </div>
 
-          {/* Aba de seção + ações secundárias */}
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="inline-flex rounded-md border overflow-hidden">
-              {(["sales", "payments"] as const).map((tab) => (
+          {/* Abas + toolbar */}
+          <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            {/* Abas */}
+            <div className="inline-flex w-full overflow-hidden rounded-md border md:w-auto">
+              {(['sales', 'payments'] as const).map((tab) => (
                 <Button
                   key={tab}
-                  variant={activeTab === tab ? "default" : "ghost"}
+                  variant={activeTab === tab ? 'default' : 'ghost'}
                   onClick={() => setActiveTab(tab)}
-                  className="h-9 px-3 rounded-none"
+                  className="h-9 rounded-none px-3 flex-1 md:flex-none"
                 >
-                  {tab === "sales" ? "Vendas" : "Pagamentos"}
+                  {tab === 'sales' ? 'Vendas' : 'Pagamentos'}
                 </Button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="inline-flex items-center gap-1">
-                <span className="text-sm text-muted-foreground">Itens por página</span>
+            {/* Toolbar responsiva */}
+            <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
+              {/* Itens por página */}
+              <div className="inline-flex items-center gap-2 shrink-0">
+                <span className="text-sm text-muted-foreground">
+                  <span className="md:hidden whitespace-nowrap">Itens/pág.</span>
+                  <span className="hidden md:inline">Itens por página</span>
+                </span>
                 <select
                   className="h-9 rounded-md border bg-background px-2 text-sm"
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
+                  aria-label="Itens por página"
                 >
                   {[10, 20, 50].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
+                    <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Botões existentes */}
-              <Button variant="outline" className="h-9" onClick={exportCSV}>
-                <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
+              {/* Exportar */}
+              <Button
+                variant="outline"
+                className="h-9 shrink-0"
+                onClick={exportCSV}
+                aria-label="Exportar CSV"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                <span className="md:hidden whitespace-nowrap">Exp. CSV</span>
+                <span className="hidden md:inline">Exportar CSV</span>
               </Button>
 
-              {/* =========================
-                  NOVOS BOTÕES GLOBAIS
-                 ========================= */}
-              <Button className="h-9" onClick={() => { setContinueAfterCreate(null); setNewSaleOpen(true); }}>
-                Nova venda
-              </Button>
-              <Button className="h-9" variant="outline" onClick={() => openSelectSale("pay")}>
-                Registrar pagamento
-              </Button>
-              <Button className="h-9" variant="outline" onClick={() => openSelectSale("link")}>
-                Gerar pagamento
-              </Button>
-              {/* ========================= */}
+              {/* CTAs (abrev. no mobile, texto cheio no md+) */}
+              <div className="flex flex-1 flex-wrap gap-2 md:flex-none">
+                <Button
+                  className="h-9 w-full sm:w-auto"
+                  onClick={() => { setContinueAfterCreate(null); setNewSaleOpen(true); }}
+                  aria-label="Nova venda"
+                >
+                  <span className="md:hidden whitespace-nowrap">Nova</span>
+                  <span className="hidden md:inline">Nova venda</span>
+                </Button>
+
+                <Button
+                  className="h-9 w-full sm:w-auto"
+                  variant="outline"
+                  onClick={() => openSelectSale('pay')}
+                  aria-label="Registrar pagamento"
+                >
+                  <span className="md:hidden whitespace-nowrap">Reg. Pag.</span>
+                  <span className="hidden md:inline">Registrar pagamento</span>
+                </Button>
+
+                <Button
+                  className="h-9 w-full sm:w-auto"
+                  variant="outline"
+                  onClick={() => openSelectSale('link')}
+                  aria-label="Gerar pagamento"
+                >
+                  <span className="md:hidden whitespace-nowrap">Ger. Pag.</span>
+                  <span className="hidden md:inline">Gerar pagamento</span>
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
-
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
