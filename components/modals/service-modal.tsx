@@ -34,7 +34,7 @@ export function ServiceModal({
 	service,
 	mode,
 }: ServiceModalProps) {
-	const { addService, updateService } = useData()
+	const { addService, updateService, serviceVariants } = useData()
 	const { toast } = useToast()
 	const [isLoading, setIsLoading] = useState(false)
 
@@ -55,7 +55,10 @@ export function ServiceModal({
 					category: service.category || "",
 					active: service.active,
 				})
-				setVariants(service.variants || [])
+				const filteredVariants = serviceVariants.filter(
+					variant => variant.serviceId === service.id,
+				)
+				setVariants(filteredVariants || [])
 			} else {
 				setFormData({
 					name: "",
