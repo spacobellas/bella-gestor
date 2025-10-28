@@ -108,13 +108,13 @@ function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 max-h-[200px] overflow-y-auto">
         <Command>
           <CommandInput placeholder="Buscar..." />
           <CommandList>
-            <ScrollArea className="max-h-[200px] overflow-y-auto">
-              <CommandEmpty>{emptyText}</CommandEmpty>
-              <CommandGroup>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandGroup>
+              <ScrollArea>
                 {items.map((it, i) => (
                   <CommandItem
                     key={`${it.value}-${i}`}
@@ -129,8 +129,8 @@ function Combobox({
                     {value === it.value ? <Check className="h-4 w-4" /> : null}
                   </CommandItem>
                 ))}
-              </CommandGroup>
-            </ScrollArea>
+              </ScrollArea>
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
