@@ -79,15 +79,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     try {
       const [
-        clientsData,
+        activeClients,      // ← Renomeado de clientsData
+        inactiveClients,    // ← Novo: busca inativos
         servicesData,
         variantsData,
         salesData,
         paymentsData,
         appointmentsData,
       ] = await Promise.all([
-        // Ajuste estas chamadas para as funções reais que você já usa no projeto
-        api.getClients?.(),
+        api.getActiveClients?.(),
+        api.getInactiveClients?.(),
         api.getServices?.(),
         api.getServiceVariants?.(),
         (api as any).getSales?.(),
@@ -95,7 +96,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         (api as any).getAppointments?.(),
       ])
 
-      if (clientsData) setClients(clientsData)
+      // Combina ativos e inativos em um único array
+      const allClients = [...(activeClients || []), ...(inactiveClients || [])]
+      setClients(allClients)
+
+      // Remove a linha antiga: if (clientsData) setClients(clientsData)
       if (servicesData) setServices(servicesData)
       if (variantsData) setServiceVariants(variantsData)
       if (salesData) setSales(salesData)
