@@ -70,6 +70,7 @@ interface CalendarEvent {
 interface AppointmentFormData {
   clientId: string
   serviceId: string
+  serviceVariantId: string
   startTime: string
   endTime: string
   notes: string
@@ -155,11 +156,26 @@ export default function AgendaPage() {
   const [formData, setFormData] = useState<AppointmentFormData>({
     clientId: "",
     serviceId: "",
+    serviceVariantId: "",
     startTime: "",
     endTime: "",
     notes: "",
   })
   const [saving, setSaving] = useState(false)
+
+  const selectedService = useMemo(
+    () => services.find((s) => s.id === formData.serviceId),
+    [services, formData.serviceId]
+  )
+
+  const availableVariants = useMemo(
+    () =>
+      (selectedService?.variants || []).map((v) => ({
+        value: v.id,
+        label: `${v.variantName} (${v.duration} min) - R$${v.price.toFixed(2)}`,
+      })),
+    [selectedService]
+  )
 
   // Carregar dados base
   useEffect(() => {
@@ -288,6 +304,9 @@ export default function AgendaPage() {
   function getServiceNameFromEvent(ev: CalendarEvent) {
     return parseField(ev.description, "Serviço: ")
   }
+  function getServiceVariantNameFromEvent(ev: CalendarEvent) {
+    return parseField(ev.description, "Variante: ")
+  }
 
   // Filtros dos eventos exibidos na semana
   const weekEvents = useMemo(() => {
@@ -323,7 +342,7 @@ export default function AgendaPage() {
   // Ações
   function openCreate() {
     setSelectedEvent(null)
-    setFormData({ clientId: "", serviceId: "", startTime: "", endTime: "", notes: "" })
+    setFormData({ clientId: "", serviceId: "", serviceVariantId: "", startTime: "", endTime: "", notes: "" })
     setFormOpen(true)
   }
   function openEdit(ev: CalendarEvent) {
@@ -342,6 +361,7 @@ export default function AgendaPage() {
     setFormData({
       clientId: c?.id || "",
       serviceId: s?.id || "",
+      serviceVariantId: "", // Will be populated from event description later
       startTime: toLocal(st),
       endTime: toLocal(et),
       notes,
@@ -354,22 +374,24 @@ export default function AgendaPage() {
   }
 
   async function onSave() {
-    if (!formData.clientId || !formData.serviceId || !formData.startTime || !formData.endTime) {
+    if (!formData.clientId || !formData.serviceId || !formData.serviceVariantId || !formData.startTime || !formData.endTime) {
       setError("Preencha todos os campos obrigatórios")
       return
     }
     const c = clients.find((x) => x.id === formData.clientId)
     const s = services.find((x) => x.id === formData.serviceId)
-    if (!c || !s) {
-      setError("Cliente ou serviço inválido")
+    const sv = selectedService?.variants?.find((x) => x.id === formData.serviceVariantId)
+
+    if (!c || !s || !sv) {
+      setError("Cliente, serviço ou variante de serviço inválido")
       return
     }
     setSaving(true)
     setError(null)
     try {
       const payload = {
-        summary: `${c.name} - ${s.name}`,
-        description: `Cliente: ${c.name}\nTelefone: ${c.phone || ""}\nServiço: ${s.name}\nObservações: ${formData.notes || ""}`,
+        summary: `${c.name} - ${s.name} (${sv.variantName})`,
+        description: `Cliente: ${c.name}\nTelefone: ${c.phone || ""}\nServiço: ${s.name}\nVariante: ${sv.variantName}\nObservações: ${formData.notes || ""}`,
         location: "Spaço Bellas",
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
@@ -738,7 +760,18 @@ export default function AgendaPage() {
                   placeholder="Selecione o serviço"
                   items={serviceItems}
                   value={formData.serviceId}
-                  onChange={(v) => setFormData((p) => ({ ...p, serviceId: v }))}
+                  onChange={(v) => setFormData((p) => ({ ...p, serviceId: v, serviceVariantId: "" }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Variante do Serviço</label>
+                <Combobox
+                  placeholder="Selecione a variante"
+                  items={availableVariants}
+                  value={formData.serviceVariantId}
+                  onChange={(v) => setFormData((p) => ({ ...p, serviceVariantId: v }))}
+                  disabled={!formData.serviceId || availableVariants.length === 0}
+                  emptyText={formData.serviceId ? "Nenhuma variante encontrada" : "Selecione um serviço primeiro"}
                 />
               </div>
             </div>
@@ -798,7 +831,14 @@ export default function AgendaPage() {
             </Button>
             <Button
               onClick={onSave}
-              disabled={saving || !formData.clientId || !formData.serviceId || !formData.startTime || !formData.endTime}
+              disabled={
+                saving ||
+                !formData.clientId ||
+                !formData.serviceId ||
+                !formData.serviceVariantId ||
+                !formData.startTime ||
+                !formData.endTime
+              }
             >
               {saving ? "Salvando..." : selectedEvent ? "Salvar alterações" : "Criar agendamento"}
             </Button>
