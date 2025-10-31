@@ -295,16 +295,12 @@ export default function ClientesPage() {
         <div className="flex-none space-y-4 p-4 md:p-6 pb-0">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Clientes Ativos</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
               <p className="text-base text-muted-foreground mt-1">
-                Gerencie sua base de clientes ativos
+                Gerencie sua base de clientes
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={() => router.push('/clientes/inativos')} variant="outline" size="default" className="w-full sm:w-auto">
-                <Archive className="mr-2 h-4 w-4" />
-                Ver Inativos
-              </Button>
               <Button onClick={handleCreate} size="default" className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Novo Cliente
@@ -473,10 +469,7 @@ export default function ClientesPage() {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
                     <span>
-                      {filteredClients.length === clients.length 
-                        ? `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'} no total`
-                        : `${filteredClients.length} de ${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`
-                      }
+                      {`${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`}
                     </span>
                   </div>
                 </div>
@@ -539,8 +532,8 @@ export default function ClientesPage() {
                       {visibleColumns.serviceLocation && (
                         <TableHead className="min-w-[140px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Local</TooltipTrigger>
-                            <TooltipContent>Local preferido para serviço</TooltipContent>
+                            <TooltipTrigger className="cursor-help">Onde Conheceu</TooltipTrigger>
+                            <TooltipContent>Onde conheceu o Spaço Bellas</TooltipContent>
                           </Tooltip>
                         </TableHead>
                       )}
