@@ -111,7 +111,7 @@ export default function RelatoriosPage() {
     refreshData,
   } = useData()
 
-  const [referralSourceCounts, setReferralSourceCounts] = useState<Record<string, number>>({});
+  const [referral_sourceCounts, setReferralSourceCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchReferralSourceCounts = async () => {
@@ -264,9 +264,9 @@ export default function RelatoriosPage() {
       retentionRate,
       totalClients,
       activeClients,
-      referralSourceCounts,
+      referral_sourceCounts,
     }
-  }, [currentPeriod, previousPeriod, clients, appointments, sales, payments, services, serviceVariants, referralSourceCounts])
+  }, [currentPeriod, previousPeriod, clients, appointments, sales, payments, services, serviceVariants, referral_sourceCounts])
 
   function getPeriodLabel(): string {
     const labels: Record<string, string> = {
@@ -309,12 +309,12 @@ export default function RelatoriosPage() {
       XLSX.utils.book_append_sheet(wb, wsClients, "Novos Clientes")
     }
 
-    const referralSourceData = Object.entries(metrics.referralSourceCounts).map(([source, count]) => ({
+    const referral_sourceData = Object.entries(metrics.referral_sourceCounts).map(([source, count]) => ({
       "Como Conheceu": source,
       "Quantidade de Clientes": count,
     }));
-    if (referralSourceData.length > 0) {
-      const wsReferralSource = XLSX.utils.json_to_sheet(referralSourceData);
+    if (referral_sourceData.length > 0) {
+      const wsReferralSource = XLSX.utils.json_to_sheet(referral_sourceData);
       XLSX.utils.book_append_sheet(wb, wsReferralSource, "Como Conheceu");
     }
 
@@ -708,11 +708,11 @@ export default function RelatoriosPage() {
 
           <Card className="p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Como os Clientes Conheceram</h3>
-            {Object.keys(metrics.referralSourceCounts).length === 0 ? (
+            {Object.keys(metrics.referral_sourceCounts).length === 0 ? (
               <div className="text-sm text-muted-foreground">Nenhum dado disponível para "Como Conheceu"</div>
             ) : (
               <div className="space-y-2">
-                {Object.entries(metrics.referralSourceCounts)
+                {Object.entries(metrics.referral_sourceCounts)
                   .sort(([, countA], [, countB]) => countB - countA)
                   .map(([source, count]) => (
                     <div key={source} className="flex items-center justify-between p-3 rounded-lg border bg-card">

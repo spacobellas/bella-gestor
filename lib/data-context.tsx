@@ -386,7 +386,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const created = await api.createServiceVariant?.(variant as any)
       await refreshData()
-      toast({ title: "Variante criada", description: "A variante foi adicionada com sucesso." })
+      toast({ title: "Tipo criada", description: "A variante foi adicionada com sucesso." })
       return created || null
     } catch (err: any) {
       const msg = err?.message || "Não foi possível criar a variante."
@@ -400,7 +400,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await api.updateServiceVariant?.(id, variant)
       await refreshData()
-      toast({ title: "Variante atualizada", description: "Os dados da variante foram atualizados." })
+      toast({ title: "Tipo atualizada", description: "Os dados da variante foram atualizados." })
       return updated || null
     } catch (err: any) {
       const msg = err?.message || "Não foi possível atualizar a variante."
@@ -414,7 +414,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       await (api as any).deleteServiceVariant?.(id)
       await refreshData()
-      toast({ title: "Variante removida", description: "A variante foi removida com sucesso." })
+      toast({ title: "Tipo removida", description: "A variante foi removida com sucesso." })
       return true
     } catch (err: any) {
       const msg = err?.message || "Não foi possível remover a variante."

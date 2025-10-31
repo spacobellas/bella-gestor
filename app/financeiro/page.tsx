@@ -501,7 +501,7 @@ export default function FinanceiroPage() {
           return {
             quantity: it.quantity,
             price: Math.round(Number(it.unitPrice) * 100), // centavos
-            description: `${service?.name || 'Serviço'} - ${variant?.variantName || 'Variante'}`,
+            description: `${service?.name || 'Serviço'} - ${variant?.variantName || 'Tipo'}`,
           };
         }),
         customer: {

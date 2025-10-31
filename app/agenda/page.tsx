@@ -312,7 +312,7 @@ export default function AgendaPage() {
     return parseField(ev.description, "Serviço: ")
   }
   function getServiceVariantNameFromEvent(ev: CalendarEvent) {
-    return parseField(ev.description, "Variante: ")
+    return parseField(ev.description, "Tipo: ")
   }
   function getProfessionalFromEvent(ev: CalendarEvent) {
     return parseField(ev.description, "Profissional: ")
@@ -426,7 +426,7 @@ export default function AgendaPage() {
     try {
       const payload = {
         summary: `${c.name} - ${s.name} (${sv.variantName})`,
-        description: `Cliente: ${c.name}\nTelefone: ${c.phone}\nServiço: ${s.name}\nVariante: ${sv.variantName}${professionalLine}${
+        description: `Cliente: ${c.name}\nTelefone: ${c.phone}\nServiço: ${s.name}\nTipo: ${sv.variantName}${professionalLine}${
           formData.notes ? `\nObservações: ${formData.notes}` : ""
         }`,
         location: "Spaço Bellas",
@@ -815,7 +815,7 @@ export default function AgendaPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Variante do Serviço</label>
+                <label className="block text-sm mb-1">Tipo do Serviço</label>
                 <Combobox
                   placeholder="Selecione a variante"
                   items={availableVariants}

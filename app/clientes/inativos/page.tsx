@@ -38,7 +38,7 @@ interface VisibleColumns {
   totalSpent: boolean
   serviceLocation: boolean
   preferredSchedule: boolean
-  referralSource: boolean
+  referral_source: boolean
   status: boolean
   notes: boolean
 }
@@ -67,7 +67,7 @@ export default function ClientesInativosPage() {
     totalSpent: true,
     serviceLocation: true,
     preferredSchedule: true,
-    referralSource: true,
+    referral_source: true,
     status: true,
     notes: true,
   })
@@ -173,7 +173,7 @@ export default function ClientesInativosPage() {
       "Total Gasto": formatCurrency(client.totalSpent),
       "Local do Serviço": client.serviceLocation || "—",
       "Horário Preferido": client.preferredSchedule || "—",
-      "Fonte de Indicação": client.referralSource || "—",
+      "Fonte de Indicação": client.referral_source || "—",
       "Consentimento Marketing": client.marketingConsent ? "Sim" : "Não",
       "Status": client.isClient ? "Comprou" : "Não comprou",
       Observações: client.notes || ""
@@ -413,8 +413,8 @@ export default function ClientesInativosPage() {
                           Horário
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem
-                          checked={visibleColumns.referralSource}
-                          onCheckedChange={() => toggleColumn("referralSource")}
+                          checked={visibleColumns.referral_source}
+                          onCheckedChange={() => toggleColumn("referral_source")}
                         >
                           Indicação
                         </DropdownMenuCheckboxItem>
@@ -541,7 +541,7 @@ export default function ClientesInativosPage() {
                           </Tooltip>
                         </TableHead>
                       )}
-                      {visibleColumns.referralSource && (
+                      {visibleColumns.referral_source && (
                         <TableHead className="min-w-[140px] font-semibold">
                           <Tooltip>
                             <TooltipTrigger className="cursor-help">Indicação</TooltipTrigger>
@@ -702,14 +702,14 @@ export default function ClientesInativosPage() {
                               </Tooltip>
                             </TableCell>
                           )}
-                          {visibleColumns.referralSource && (
+                          {visibleColumns.referral_source && (
                             <TableCell>
                               <Tooltip>
                                 <TooltipTrigger className="cursor-help truncate block">
-                                  {client.referralSource || "—"}
+                                  {client.referral_source || "—"}
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {client.referralSource || "Fonte não especificada"}
+                                  {client.referral_source || "Fonte não especificada"}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>

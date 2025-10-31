@@ -43,7 +43,7 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
     birthDate: "",
     serviceLocation: "",
     preferredSchedule: "",
-    referralSource: "",
+    referral_source: "",
     notes: "",
     services: "",
     status: "active" as "active" | "inactive",
@@ -60,7 +60,7 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         birthDate: client.birthDate || "",
         serviceLocation: client.serviceLocation || "",
         preferredSchedule: client.preferredSchedule || "",
-        referralSource: client.referralSource || "",
+        referral_source: client.referral_source || "",
         notes: client.notes || "",
         services: client.services || "",
         status: client.status || "active",
@@ -75,7 +75,7 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         birthDate: "",
         serviceLocation: "",
         preferredSchedule: "",
-        referralSource: "",
+        referral_source: "",
         notes: "",
         services: "",
         status: "active",
@@ -368,17 +368,17 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="referralSource">Como Conheceu</Label>
+                <Label htmlFor="referral_source">Como Conheceu</Label>
                 {isReadOnly ? (
                   <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/30 px-3 py-2 text-sm">
-                    {formData.referralSource || "—"}
+                    {formData.referral_source || "—"}
                   </div>
                 ) : (
                   <Select
-                    value={formData.referralSource}
-                    onValueChange={(value) => handleInputChange("referralSource", value)}
+                    value={formData.referral_source}
+                    onValueChange={(value) => handleInputChange("referral_source", value)}
                   >
-                    <SelectTrigger id="referralSource">
+                    <SelectTrigger id="referral_source">
                       <SelectValue placeholder="Selecione uma opção" />
                     </SelectTrigger>
                     <SelectContent>

@@ -231,7 +231,7 @@ export function AppointmentModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="variant">Variante do Serviço *</Label>
+                            <Label htmlFor="variant">Tipo do Serviço *</Label>
                             <Combobox
                                 placeholder="Selecione uma variante"
                                 items={availableVariants.map(v => ({ value: v.id, label: `${v.variantName} - R$${v.price.toFixed(2)} (${v.duration} min)` }))}

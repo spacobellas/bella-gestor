@@ -104,7 +104,7 @@ export function ServiceModal({
 		for (const variant of variants) {
 			if (!variant.variantName?.trim()) {
 				toast({
-					title: "Variante inválida",
+					title: "Tipo inválida",
 					description: "O nome da variante não pode estar vazio.",
 					variant: "destructive",
 				})
@@ -112,7 +112,7 @@ export function ServiceModal({
 			}
 			if (!variant.price || variant.price <= 0) {
 				toast({
-					title: "Variante inválida",
+					title: "Tipo inválida",
 					description: `O preço da variante "${variant.variantName}" deve ser maior que zero.`,
 					variant: "destructive",
 				})
@@ -120,7 +120,7 @@ export function ServiceModal({
 			}
 			if (!variant.duration || variant.duration <= 0) {
 				toast({
-					title: "Variante inválida",
+					title: "Tipo inválida",
 					description: `A duração da variante "${variant.variantName}" deve ser maior que zero.`,
 					variant: "destructive",
 				})
@@ -269,7 +269,7 @@ export function ServiceModal({
 
 					<div className="space-y-4">
 						<div className="flex items-center justify-between">
-							<h3 className="text-lg font-medium">Variantes do Serviço</h3>
+							<h3 className="text-lg font-medium">Tipos do Serviço</h3>
 							<Button
 								type="button"
 								variant="outline"
@@ -277,7 +277,7 @@ export function ServiceModal({
 								onClick={handleAddVariant}
 							>
 								<Plus className="mr-2 h-4 w-4" />
-								Adicionar Variante
+								Adicionar Tipo
 							</Button>
 						</div>
 
@@ -302,7 +302,7 @@ export function ServiceModal({
 											<div className="space-y-4">
 												<div className="space-y-2">
 													<Label htmlFor={`variantName-${index}`}>
-														Nome da Variante *
+														Nome da Tipo *
 													</Label>
 													<Input
 														id={`variantName-${index}`}
@@ -362,7 +362,7 @@ export function ServiceModal({
 														}
 													/>
 													<Label htmlFor={`variantActive-${index}`}>
-														Variante Ativa
+														Tipo Ativa
 													</Label>
 												</div>
 											</div>

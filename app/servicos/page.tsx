@@ -200,7 +200,7 @@ export default function ConfiguracoesPage() {
                           </PopoverTrigger>
                           <PopoverContent className="w-64 p-2">
                             <div className="space-y-1">
-                              <p className="text-sm font-semibold">Variantes:</p>
+                              <p className="text-sm font-semibold">Tipos:</p>
                               {variants.map((variant: ServiceVariant) => (
                                 <div key={variant.id} className="text-sm text-muted-foreground flex justify-between items-center">
                                   <span>{variant.variantName}</span>
