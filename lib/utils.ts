@@ -17,7 +17,7 @@ export function supabaseClientToClient(supabaseClient: SupabaseClient & { total_
     birthDate: supabaseClient.birth_date || undefined,
     serviceLocation: supabaseClient.service_location || undefined,
     preferredSchedule: supabaseClient.preferred_schedule || undefined,
-    referralSource: supabaseClient.referral_source || undefined,
+    referral_source: supabaseClient.referral_source || undefined,
     marketingConsent: supabaseClient.marketing_consent,
     isClient: supabaseClient.is_client,
     registrationDate: supabaseClient.created_at,
@@ -43,7 +43,7 @@ export function clientToSupabaseClient(
   if (client.birthDate !== undefined) data.birth_date = client.birthDate || null
   if (client.serviceLocation !== undefined) data.service_location = client.serviceLocation || null
   if (client.preferredSchedule !== undefined) data.preferred_schedule = client.preferredSchedule || null
-  if (client.referralSource !== undefined) data.referral_source = client.referralSource || null
+  if (client.referral_source !== undefined) data.referral_source = client.referral_source || null
   if (client.marketingConsent !== undefined) data.marketing_consent = client.marketingConsent
   if (client.isClient !== undefined) data.is_client = client.isClient
 

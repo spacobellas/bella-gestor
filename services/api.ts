@@ -7,8 +7,9 @@ import type {
   Sale,
   Payment,
   SaleStatus,
+  Professional,
 } from "@/lib/types"
-import { PaymentStatus } from "@/lib/types"
+import { PaymentStatus, AppRole } from "@/lib/types"
 import { supabase } from "@/lib/supabaseClient"
 import { supabaseClientToClient, clientToSupabaseClient } from "@/lib/utils"
 import { parseSupabaseError } from "@/lib/error-handler"
@@ -553,6 +554,35 @@ export async function deleteServiceVariant(id: string): Promise<boolean> {
     return true
   } catch (error) {
     console.error("Error in deleteServiceVariant:", error)
+    throw error
+  }
+}
+
+// USUÁRIOS / PROFISSIONAIS
+export async function getProfessionals(): Promise<Professional[]> {
+  try {
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("user_id, role, email, full_name, function_title")
+      .eq("role", AppRole.PROFESSIONAL) // apenas colaboradoras
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      const parsed = parseSupabaseError(error)
+      throw new Error(parsed.description)
+    }
+
+    if (!data) return []
+
+    return (data as any[]).map((r) => ({
+      id: r.user_id as string,
+      email: r.email ?? undefined,
+      fullName: r.full_name ?? undefined,
+      functionTitle: r.function_title ?? undefined,
+      role: r.role as AppRole,
+    }))
+  } catch (error) {
+    console.error("Error in getProfessionals", error)
     throw error
   }
 }
@@ -1106,7 +1136,7 @@ export async function getActiveServices(): Promise<Service[]> {
   }
 }
 
-// Opcional: variantes ativas (se a Agenda usar)
+// Opcional: tipos ativas (se a Agenda usar)
 export async function getActiveServiceVariants(): Promise<ServiceVariant[]> {
   const all = await getServiceVariants()
   return all.filter(v => v.active)

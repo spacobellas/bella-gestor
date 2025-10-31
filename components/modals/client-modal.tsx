@@ -43,13 +43,16 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
     birthDate: "",
     serviceLocation: "",
     preferredSchedule: "",
-    referralSource: "",
+    referral_source: "",
     notes: "",
     services: "",
     status: "active" as "active" | "inactive",
     marketingConsent: false,
     isClient: false,
   })
+
+  const [originOption, setOriginOption] = useState<string>("");
+  const [originDetail, setOriginDetail] = useState<string>("");
 
   useEffect(() => {
     if (open && client && (mode === "edit" || mode === "view")) {
@@ -60,13 +63,23 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         birthDate: client.birthDate || "",
         serviceLocation: client.serviceLocation || "",
         preferredSchedule: client.preferredSchedule || "",
-        referralSource: client.referralSource || "",
+        referral_source: client.referral_source || "",
         notes: client.notes || "",
         services: client.services || "",
-        status: client.status || "active",
+        status: "active",
         marketingConsent: client.marketingConsent || false,
         isClient: client.isClient || false,
       })
+
+      const sl = (client.serviceLocation || "").trim()
+      if (sl) {
+        const [opt, ...rest] = sl.split(" - ")
+        setOriginOption(opt || "")
+        setOriginDetail(rest.join(" - ") || "")
+      } else {
+        setOriginOption("")
+        setOriginDetail("")
+      }
     } else if (open && mode === "create") {
       setFormData({
         name: "",
@@ -75,7 +88,7 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         birthDate: "",
         serviceLocation: "",
         preferredSchedule: "",
-        referralSource: "",
+        referral_source: "",
         notes: "",
         services: "",
         status: "active",
@@ -83,7 +96,8 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         isClient: false,
       })
     }
-
+    setOriginOption("")
+    setOriginDetail("")
     setValidationErrors({})
   }, [client, mode, open])
 
@@ -170,9 +184,11 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
 
     setIsLoading(true)
     try {
+      const combinedServiceLocation = originOption ? `${originOption}${originDetail ? ` - ${originDetail}` : ""}` : ""
       const dataToSubmit = {
         ...formData,
         phone: cleanPhone(formData.phone),
+        serviceLocation: combinedServiceLocation,
       }
 
       if (mode === "create") {
@@ -301,25 +317,6 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                     max={new Date().toISOString().split("T")[0]}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  {isReadOnly ? (
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/30 px-3 py-2 text-sm">
-                      {formData.status === "active" ? "Ativo" : "Inativo"}
-                    </div>
-                  ) : (
-                    <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="inactive">Inativo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -337,20 +334,42 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
             </TabsContent>
 
             <TabsContent value="adicional" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="serviceLocation">Local de Atendimento</Label>
-                <Input
-                  id="serviceLocation"
-                  value={formData.serviceLocation}
-                  onChange={(e) => handleInputChange("serviceLocation", e.target.value)}
-                  placeholder="Ex: Clínica, Domicílio, Estúdio"
-                  readOnly={isReadOnly}
-                  className={isReadOnly ? "bg-muted/30 cursor-default" : ""}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Onde o cliente prefere ser atendido
-                </p>
-              </div>
+              {/* Onde Conheceu */}
+              {isReadOnly ? (
+                <>
+                  <Label>Onde Conheceu</Label>
+                  <div className="text-sm">{formData.serviceLocation || "—"}</div>
+                </>
+              ) : (
+                <>
+                  <Label>Onde Conheceu</Label>
+                  <Select value={originOption} onValueChange={setOriginOption}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma opção" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Empresa">Empresa</SelectItem>
+                      <SelectItem value="Condomínio">Condomínio</SelectItem>
+                      <SelectItem value="Escola">Escola</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    className="mt-2"
+                    value={originDetail}
+                    onChange={(e) => setOriginDetail(e.target.value)}
+                    placeholder="Detalhe (ex.: nome da empresa, escola, condomínio...)"
+                    disabled={!originOption}
+                  />
+
+                  {originOption && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Será salvo como: {originOption}{originDetail ? ` - ${originDetail}` : ""}
+                    </p>
+                  )}
+                </>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="preferredSchedule">Horário Preferencial</Label>
@@ -368,17 +387,17 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="referralSource">Como Conheceu</Label>
+                <Label htmlFor="referral_source">Como Conheceu</Label>
                 {isReadOnly ? (
                   <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/30 px-3 py-2 text-sm">
-                    {formData.referralSource || "—"}
+                    {formData.referral_source || "—"}
                   </div>
                 ) : (
                   <Select
-                    value={formData.referralSource}
-                    onValueChange={(value) => handleInputChange("referralSource", value)}
+                    value={formData.referral_source}
+                    onValueChange={(value) => handleInputChange("referral_source", value)}
                   >
-                    <SelectTrigger id="referralSource">
+                    <SelectTrigger id="referral_source">
                       <SelectValue placeholder="Selecione uma opção" />
                     </SelectTrigger>
                     <SelectContent>

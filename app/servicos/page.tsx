@@ -77,7 +77,7 @@ export default function ConfiguracoesPage() {
 
   const getPriceRange = (serviceId: string): string => {
     const variants = getServiceVariantsForService(serviceId)
-    if (variants.length === 0) return "Sem variantes"
+    if (variants.length === 0) return "Sem tipos"
     const prices = variants.map((v: ServiceVariant) => v.price)
     const minPrice = Math.min(...prices)
     const maxPrice = Math.max(...prices)
@@ -195,12 +195,12 @@ export default function ConfiguracoesPage() {
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="h-7 text-xs">
-                              {variants.length} variante{variants.length !== 1 ? 's' : ''}
+                              {variants.length} tipo{variants.length !== 1 ? 's' : ''}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-64 p-2">
                             <div className="space-y-1">
-                              <p className="text-sm font-semibold">Variantes:</p>
+                              <p className="text-sm font-semibold">Tipos:</p>
                               {variants.map((variant: ServiceVariant) => (
                                 <div key={variant.id} className="text-sm text-muted-foreground flex justify-between items-center">
                                   <span>{variant.variantName}</span>
@@ -214,7 +214,7 @@ export default function ConfiguracoesPage() {
                         </Popover>
                       ) : (
                         <span className="text-xs text-muted-foreground">
-                          Sem variantes
+                          Sem tipos
                         </span>
                       )}
                       <Badge variant={service.active ? "default" : "secondary"}>
@@ -255,8 +255,8 @@ export default function ConfiguracoesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita e todas
-              as variantes relacionadas também serão removidas.
+              Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita e todos
+              os tipos relacionados também serão removidos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

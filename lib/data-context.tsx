@@ -8,6 +8,7 @@ import type {
   ServiceVariant,
   Sale,
   Payment,
+  Professional,
 } from "@/lib/types"
 import { SaleStatus, PaymentStatus } from "@/lib/types"
 import * as api from "@/services/api"
@@ -23,6 +24,7 @@ interface DataContextType {
   serviceVariants: ServiceVariant[]
   sales: Sale[]
   payments: Payment[]
+  professionals: Professional[]
   isLoading: boolean
   error: string | null
 
@@ -73,6 +75,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [professionals, setProfessionals] = useState<Professional[]>([])
 
   // Carrega tudo que a aplicação precisa (inclui financeiro)
   const refreshData = async () => {
@@ -86,6 +89,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         salesData,
         paymentsData,
         appointmentsData,
+        professionalsData,
       ] = await Promise.all([
         api.getActiveClients?.(),
         api.getInactiveClients?.(),
@@ -94,6 +98,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         (api as any).getSales?.(),
         (api as any).getPayments?.(),
         (api as any).getAppointments?.(),
+        api.getProfessionals(),
       ])
 
       // Combina ativos e inativos em um único array
@@ -106,6 +111,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (salesData) setSales(salesData)
       if (paymentsData) setPayments(paymentsData)
       if (appointmentsData) setAppointments(appointmentsData)
+      if (professionalsData) setProfessionals(professionalsData)
       setError(null)
     } catch (err: any) {
       const msg = err?.message || "Falha ao carregar dados"
@@ -353,9 +359,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const variants = await api.getServiceVariantsByServiceId?.(serviceId)
       return variants || []
     } catch (err: any) {
-      const msg = err?.message || "Não foi possível buscar as variantes do serviço."
+      const msg = err?.message || "Não foi possível buscar os tipos do serviço."
       setError(msg)
-      toast({ title: "Erro ao buscar variantes", description: msg, variant: "destructive" })
+      toast({ title: "Erro ao buscar tipos", description: msg, variant: "destructive" })
       return []
     }
   }
@@ -380,12 +386,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const created = await api.createServiceVariant?.(variant as any)
       await refreshData()
-      toast({ title: "Variante criada", description: "A variante foi adicionada com sucesso." })
+      toast({ title: "Tipo criado", description: "O tipo foi adicionado com sucesso." })
       return created || null
     } catch (err: any) {
-      const msg = err?.message || "Não foi possível criar a variante."
+      const msg = err?.message || "Não foi possível criar o tipo."
       setError(msg)
-      toast({ title: "Erro ao criar variante", description: msg, variant: "destructive" })
+      toast({ title: "Erro ao criar tipo", description: msg, variant: "destructive" })
       return null
     }
   }
@@ -394,12 +400,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await api.updateServiceVariant?.(id, variant)
       await refreshData()
-      toast({ title: "Variante atualizada", description: "Os dados da variante foram atualizados." })
+      toast({ title: "Tipo atualizado", description: "Os dados do tipo foram atualizados." })
       return updated || null
     } catch (err: any) {
-      const msg = err?.message || "Não foi possível atualizar a variante."
+      const msg = err?.message || "Não foi possível atualizar o tipo."
       setError(msg)
-      toast({ title: "Erro ao atualizar variante", description: msg, variant: "destructive" })
+      toast({ title: "Erro ao atualizar tipo", description: msg, variant: "destructive" })
       return null
     }
   }
@@ -408,12 +414,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       await (api as any).deleteServiceVariant?.(id)
       await refreshData()
-      toast({ title: "Variante removida", description: "A variante foi removida com sucesso." })
+      toast({ title: "Tipo removido", description: "O tipo foi removido com sucesso." })
       return true
     } catch (err: any) {
-      const msg = err?.message || "Não foi possível remover a variante."
+      const msg = err?.message || "Não foi possível remover o tipo."
       setError(msg)
-      toast({ title: "Erro ao remover variante", description: msg, variant: "destructive" })
+      toast({ title: "Erro ao remover tipo", description: msg, variant: "destructive" })
       return false
     }
   }
@@ -426,6 +432,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     serviceVariants,
     sales,
     payments,
+    professionals,
     isLoading,
     error,
 

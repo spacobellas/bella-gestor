@@ -206,10 +206,10 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      title: "Clientes Ativos",
+      title: "Clientes",
       value: activeClients,
       icon: Users,
-      description: `${clients.length} clientes no total`,
+      description: `clientes no total`,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },

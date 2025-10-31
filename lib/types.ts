@@ -259,6 +259,14 @@ export interface User {
   role: AppRole
 }
 
+export interface Professional {
+  id: string               // user_id
+  email?: string
+  fullName?: string
+  functionTitle?: string
+  role: AppRole
+}
+
 export interface CalendarEvent {
   id?: string
   summary: string
