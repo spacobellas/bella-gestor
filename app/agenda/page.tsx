@@ -12,7 +12,8 @@ import {
 } from "@/services/googleCalendarAppsScript"
 
 // Tipos (mantidos)
-import type { Client, Service } from "@/lib/types"
+import type { Client, Service, Professional } from "@/lib/types"
+import { useData } from "@/lib/data-context"
 
 // UI (shadcn)
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -72,6 +73,7 @@ interface AppointmentFormData {
   clientId: string
   serviceId: string
   serviceVariantId: string
+  professionalId: string
   startTime: string
   endTime: string
   notes: string
@@ -142,6 +144,7 @@ export default function AgendaPage() {
   // Estado
   const [clients, setClients] = useState<Client[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const { professionals } = useData()
   const [appointments, setAppointments] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -160,6 +163,7 @@ export default function AgendaPage() {
     clientId: "",
     serviceId: "",
     serviceVariantId: "",
+    professionalId: "",
     startTime: "",
     endTime: "",
     notes: "",
@@ -310,6 +314,9 @@ export default function AgendaPage() {
   function getServiceVariantNameFromEvent(ev: CalendarEvent) {
     return parseField(ev.description, "Variante: ")
   }
+  function getProfessionalFromEvent(ev: CalendarEvent) {
+    return parseField(ev.description, "Profissional: ")
+  }
 
   // Filtros dos eventos exibidos na semana
   const weekEvents = useMemo(() => {
@@ -345,45 +352,70 @@ export default function AgendaPage() {
   // Ações
   function openCreate() {
     setSelectedEvent(null)
-    setFormData({ clientId: "", serviceId: "", serviceVariantId: "", startTime: "", endTime: "", notes: "" })
+    setFormData({
+      clientId: "",
+      serviceId: "",
+      serviceVariantId: "",
+      professionalId: "",           // novo campo limpo na criação
+      startTime: "",
+      endTime: "",
+      notes: "",
+    })
     setFormOpen(true)
   }
+
   function openEdit(ev: CalendarEvent) {
     setSelectedEvent(ev)
+
     const st = new Date(ev.start.dateTime)
     const et = new Date(ev.end.dateTime)
+
     const clientName = getClientNameFromEvent(ev)
     const serviceName = getServiceNameFromEvent(ev)
     const notes = parseField(ev.description, "Observações: ")
+    const professionalText = parseField(ev.description, "Profissional: ") // "Nome (Função)" ou e-mail
+
     const c = clients.find((x) => x.name === clientName)
     const s = services.find((x) => x.name === serviceName)
+
+    // Encontra a profissional pelo rótulo exibido ou pelo e-mail (fallback)
+    const pre = professionals.find(
+      (p) => professionalDisplay(p) === professionalText || p.email === professionalText
+    )
+
     const toLocal = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(
         d.getHours()
       ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+
     setFormData({
       clientId: c?.id || "",
       serviceId: s?.id || "",
-      serviceVariantId: "", // Will be populated from event description later
+      serviceVariantId: "",
+      professionalId: pre?.id ?? "",
       startTime: toLocal(st),
       endTime: toLocal(et),
       notes,
     })
+
     setFormOpen(true)
   }
+
   function openDelete(ev: CalendarEvent) {
     setEventToDelete(ev)
     setDeleteOpen(true)
   }
 
   async function onSave() {
-    if (!formData.clientId || !formData.serviceId || !formData.serviceVariantId || !formData.startTime || !formData.endTime) {
+    if (!formData.clientId || !formData.serviceId || !formData.serviceVariantId || !formData.professionalId || !formData.startTime || !formData.endTime) {
       setError("Preencha todos os campos obrigatórios")
       return
     }
     const c = clients.find((x) => x.id === formData.clientId)
     const s = services.find((x) => x.id === formData.serviceId)
     const sv = selectedService?.variants?.find((x) => x.id === formData.serviceVariantId)
+    const selectedProfessional = professionals.find((x) => x.id === formData.professionalId)
+    const professionalLine = selectedProfessional ? `\nProfissional: ${professionalDisplay(selectedProfessional)}` : ""
 
     if (!c || !s || !sv) {
       setError("Cliente, serviço ou variante de serviço inválido")
@@ -394,7 +426,9 @@ export default function AgendaPage() {
     try {
       const payload = {
         summary: `${c.name} - ${s.name} (${sv.variantName})`,
-        description: `Cliente: ${c.name}\nTelefone: ${c.phone || ""}\nServiço: ${s.name}\nVariante: ${sv.variantName}\nObservações: ${formData.notes || ""}`,
+        description: `Cliente: ${c.name}\nTelefone: ${c.phone}\nServiço: ${s.name}\nVariante: ${sv.variantName}${professionalLine}${
+          formData.notes ? `\nObservações: ${formData.notes}` : ""
+        }`,
         location: "Spaço Bellas",
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
@@ -457,6 +491,19 @@ export default function AgendaPage() {
         label: s.name || "(Sem nome)",
       })),
     [services]
+  )
+
+  function professionalDisplay(p: Professional) {
+    // "Nome (Função)" ou fallback para e-mail
+    return p.fullName && p.functionTitle ? `${p.fullName} (${p.functionTitle})` : (p.email ?? "Sem e-mail")
+  }
+
+  const professionalItems = useMemo(
+    () => professionals.map(p => ({
+      value: p.id,
+      label: p.fullName && p.functionTitle ? `${p.fullName} (${p.functionTitle})` : (p.email ?? "Sem e-mail"),
+    })),
+    [professionals]
   )
 
   const monthDays = getMonthGrid(currentDate)
@@ -645,6 +692,7 @@ export default function AgendaPage() {
                               const clientName = getClientNameFromEvent(ev)
                               const phone = getPhoneFromEvent(ev)
                               const serviceName = getServiceNameFromEvent(ev)
+                              const professionalText = getProfessionalFromEvent(ev)
                               return (
                                 <li key={ev.id} className="px-3 py-3 hover:bg-muted/30 transition">
                                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -678,7 +726,7 @@ export default function AgendaPage() {
                                               {phone}
                                             </span>
                                           ) : null}
-                                          {serviceName ? <Badge variant="outline">{serviceName}</Badge> : null}
+                                          {serviceName ? <Badge variant="outline">{professionalText}</Badge> : null}
                                           {ev.location ? (
                                             <span className="inline-flex items-center gap-1">
                                               <MapPin className="h-3 w-3" />
@@ -775,6 +823,16 @@ export default function AgendaPage() {
                   onChange={(v) => setFormData((p) => ({ ...p, serviceVariantId: v }))}
                   disabled={!formData.serviceId || availableVariants.length === 0}
                   emptyText={formData.serviceId ? "Nenhuma variante encontrada" : "Selecione um serviço primeiro"}
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Profissional</label>
+                <Combobox
+                  placeholder="Selecione a profissional"
+                  items={professionalItems}
+                  value={formData.professionalId}
+                  onChange={(v) => setFormData((p) => ({ ...p, professionalId: v }))}
+                  emptyText={professionals.length ? "Nenhuma profissional encontrada" : "Carregando..."}
                 />
               </div>
             </div>

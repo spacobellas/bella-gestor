@@ -8,6 +8,7 @@ import type {
   ServiceVariant,
   Sale,
   Payment,
+  Professional,
 } from "@/lib/types"
 import { SaleStatus, PaymentStatus } from "@/lib/types"
 import * as api from "@/services/api"
@@ -23,6 +24,7 @@ interface DataContextType {
   serviceVariants: ServiceVariant[]
   sales: Sale[]
   payments: Payment[]
+  professionals: Professional[]
   isLoading: boolean
   error: string | null
 
@@ -73,6 +75,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [professionals, setProfessionals] = useState<Professional[]>([])
 
   // Carrega tudo que a aplicação precisa (inclui financeiro)
   const refreshData = async () => {
@@ -86,6 +89,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         salesData,
         paymentsData,
         appointmentsData,
+        professionalsData,
       ] = await Promise.all([
         api.getActiveClients?.(),
         api.getInactiveClients?.(),
@@ -94,6 +98,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         (api as any).getSales?.(),
         (api as any).getPayments?.(),
         (api as any).getAppointments?.(),
+        api.getProfessionals(),
       ])
 
       // Combina ativos e inativos em um único array
@@ -106,6 +111,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (salesData) setSales(salesData)
       if (paymentsData) setPayments(paymentsData)
       if (appointmentsData) setAppointments(appointmentsData)
+      if (professionalsData) setProfessionals(professionalsData)
       setError(null)
     } catch (err: any) {
       const msg = err?.message || "Falha ao carregar dados"
@@ -426,6 +432,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     serviceVariants,
     sales,
     payments,
+    professionals,
     isLoading,
     error,
 
