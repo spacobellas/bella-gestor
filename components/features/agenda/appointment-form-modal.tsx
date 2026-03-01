@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
@@ -24,19 +23,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import { useClients } from "@/hooks/features/use-clients";
-import { useServices } from "@/hooks/features/use-services";
-import { useAppointments } from "@/hooks/features/use-appointments";
 import { AppointmentStatus, Client, Service, Professional } from "@/types";
-import { Loader2, Save, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 const appointmentSchema = z.object({
   clientId: z.string().min(1, "Selecione um cliente"),
@@ -51,11 +40,18 @@ const appointmentSchema = z.object({
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 
+interface GoogleCalendarEvent {
+  id: string;
+  description?: string;
+  start: { dateTime: string };
+  end: { dateTime: string };
+}
+
 interface AppointmentFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedEvent?: any | null; // Google Calendar Event
-  onSave: (data: any) => Promise<void>;
+  selectedEvent?: GoogleCalendarEvent | null;
+  onSave: (data: AppointmentFormValues) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
   clients: Client[];
   services: Service[];
@@ -89,12 +85,12 @@ export function AppointmentFormModal({
   const selectedServiceId = form.watch("serviceId");
   const selectedService = useMemo(
     () => services.find((s) => s.id === selectedServiceId),
-    [services, selectedServiceId]
+    [services, selectedServiceId],
   );
 
   const availableVariants = useMemo(
     () => selectedService?.variants || [],
-    [selectedService]
+    [selectedService],
   );
 
   // Parse Google Event to Form
@@ -104,7 +100,9 @@ export function AppointmentFormModal({
         // Parsing logic from the original page
         const desc = selectedEvent.description || "";
         const parseField = (label: string) => {
-          const line = desc.split("\n").find((p: string) => p.startsWith(label));
+          const line = desc
+            .split("\n")
+            .find((p: string) => p.startsWith(label));
           return line ? line.replace(label, "").trim() : "";
         };
 
@@ -117,16 +115,18 @@ export function AppointmentFormModal({
         const service = services.find((s) => s.name === serviceName);
         const professional = professionals.find(
           (p) =>
-            (p.fullName && p.functionTitle && `${p.fullName} (${p.functionTitle})` === professionalText) ||
-            p.email === professionalText
+            (p.fullName &&
+              p.functionTitle &&
+              `${p.fullName} (${p.functionTitle})` === professionalText) ||
+            p.email === professionalText,
         );
 
         const toLocal = (iso: string) => {
           const d = new Date(iso);
           return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-            d.getDate()
+            d.getDate(),
           ).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(
-            d.getMinutes()
+            d.getMinutes(),
           ).padStart(2, "0")}`;
         };
 
@@ -165,21 +165,24 @@ export function AppointmentFormModal({
         value: c.id,
         label: c.name ? `${c.name} - ${c.phone}` : `(Sem nome) - ${c.phone}`,
       })),
-    [clients]
+    [clients],
   );
 
   const serviceItems = useMemo(
     () => services.map((s) => ({ value: s.id, label: s.name })),
-    [services]
+    [services],
   );
 
   const professionalItems = useMemo(
     () =>
       professionals.map((p) => ({
         value: p.id,
-        label: p.fullName && p.functionTitle ? `${p.fullName} (${p.functionTitle})` : p.email || "Profissional",
+        label:
+          p.fullName && p.functionTitle
+            ? `${p.fullName} (${p.functionTitle})`
+            : p.email || "Profissional",
       })),
-    [professionals]
+    [professionals],
   );
 
   const variantItems = useMemo(
@@ -188,7 +191,7 @@ export function AppointmentFormModal({
         value: v.id,
         label: `${v.variantName} (${v.duration} min) - R$${v.price.toFixed(2)}`,
       })),
-    [availableVariants]
+    [availableVariants],
   );
 
   return (

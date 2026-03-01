@@ -16,15 +16,17 @@ export async function getServices(): Promise<Service[]> {
       throw new Error(parseSupabaseError(error).description);
     }
 
-    return (data || []).map((s: any): Service => ({
-      id: s.id.toString(),
-      name: s.name,
-      description: s.description || "",
-      category: s.category || "",
-      active: !!s.is_active,
-      created_at: s.created_at,
-      updatedAt: s.updated_at || undefined,
-    }));
+    return (data || []).map(
+      (s: any): Service => ({
+        id: s.id.toString(),
+        name: s.name,
+        description: s.description || "",
+        category: s.category || "",
+        active: !!s.is_active,
+        created_at: s.created_at,
+        updatedAt: s.updated_at || undefined,
+      }),
+    );
   } catch (error) {
     console.error("Error in getServices:", error);
     throw error;
@@ -34,7 +36,9 @@ export async function getServices(): Promise<Service[]> {
 /**
  * Fetches service variants by service ID.
  */
-export async function getServiceVariantsByServiceId(serviceId: string): Promise<ServiceVariant[]> {
+export async function getServiceVariantsByServiceId(
+  serviceId: string,
+): Promise<ServiceVariant[]> {
   try {
     const { data, error } = await supabase
       .from("service_variants")
@@ -46,18 +50,23 @@ export async function getServiceVariantsByServiceId(serviceId: string): Promise<
       throw new Error(parseSupabaseError(error).description);
     }
 
-    return (data || []).map((v: any): ServiceVariant => ({
-      id: v.id.toString(),
-      serviceId: v.service_id.toString(),
-      variantName: v.variant_name,
-      price: parseFloat(v.price),
-      duration: v.duration_minutes,
-      active: !!v.is_active,
-      created_at: v.created_at,
-      updatedAt: v.updated_at || undefined,
-    }));
+    return (data || []).map(
+      (v: any): ServiceVariant => ({
+        id: v.id.toString(),
+        serviceId: v.service_id.toString(),
+        variantName: v.variant_name,
+        price: parseFloat(v.price),
+        duration: v.duration_minutes,
+        active: !!v.is_active,
+        created_at: v.created_at,
+        updatedAt: v.updated_at || undefined,
+      }),
+    );
   } catch (error) {
-    console.error(`Error in getServiceVariantsByServiceId for service ${serviceId}:`, error);
+    console.error(
+      `Error in getServiceVariantsByServiceId for service ${serviceId}:`,
+      error,
+    );
     throw error;
   }
 }
@@ -76,16 +85,18 @@ export async function getServiceVariants(): Promise<ServiceVariant[]> {
       throw new Error(parseSupabaseError(error).description);
     }
 
-    return (data || []).map((v: any): ServiceVariant => ({
-      id: v.id.toString(),
-      serviceId: v.service_id.toString(),
-      variantName: v.variant_name,
-      price: parseFloat(v.price),
-      duration: v.duration_minutes,
-      active: !!v.is_active,
-      created_at: v.created_at,
-      updatedAt: v.updated_at || undefined,
-    }));
+    return (data || []).map(
+      (v: any): ServiceVariant => ({
+        id: v.id.toString(),
+        serviceId: v.service_id.toString(),
+        variantName: v.variant_name,
+        price: parseFloat(v.price),
+        duration: v.duration_minutes,
+        active: !!v.is_active,
+        created_at: v.created_at,
+        updatedAt: v.updated_at || undefined,
+      }),
+    );
   } catch (error) {
     console.error("Error in getServiceVariants:", error);
     throw error;
@@ -99,7 +110,8 @@ export async function getActiveServices(): Promise<Service[]> {
   try {
     const { data, error } = await supabase
       .from("services")
-      .select(`
+      .select(
+        `
         id,
         name,
         description,
@@ -117,7 +129,8 @@ export async function getActiveServices(): Promise<Service[]> {
           created_at,
           updated_at
         )
-      `)
+      `,
+      )
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
@@ -136,20 +149,22 @@ export async function getActiveServices(): Promise<Service[]> {
       created_at: s.created_at,
       updatedAt: s.updated_at || undefined,
       variants: (s.service_variants || [])
-        .map((v: any): ServiceVariant => ({
-          id: v.id.toString(),
-          serviceId: v.service_id.toString(),
-          variantName: v.variant_name,
-          price: parseFloat(v.price),
-          duration: v.duration_minutes,
-          active: !!v.is_active,
-          created_at: v.created_at,
-          updatedAt: v.updated_at || undefined,
-        }))
+        .map(
+          (v: any): ServiceVariant => ({
+            id: v.id.toString(),
+            serviceId: v.service_id.toString(),
+            variantName: v.variant_name,
+            price: parseFloat(v.price),
+            duration: v.duration_minutes,
+            active: !!v.is_active,
+            created_at: v.created_at,
+            updatedAt: v.updated_at || undefined,
+          }),
+        )
         .filter((variant: ServiceVariant) => variant.active),
     }));
 
-    return services.filter(s => s.variants && s.variants.length > 0);
+    return services.filter((s) => s.variants && s.variants.length > 0);
   } catch (error) {
     console.error("Error in getActiveServices:", error);
     throw error;

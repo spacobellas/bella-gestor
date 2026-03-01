@@ -1,34 +1,34 @@
-"use client"
+"use client";
 
-import { useMemo, useState } from "react"
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle, ExternalLink, Copy } from "lucide-react"
-import type { Appointment } from "@/types"
-import { formatCurrency } from "@/lib/utils"
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, AlertCircle, ExternalLink, Copy } from "lucide-react";
+import type { Appointment } from "@/types";
+import { formatCurrency } from "@/lib/utils";
 
 interface CheckoutModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  appointment: Appointment
-  onSuccess: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  appointment: Appointment;
+  onSuccess: () => void;
 }
 
 export function CheckoutModal({
@@ -37,34 +37,46 @@ export function CheckoutModal({
   appointment,
   onSuccess,
 }: CheckoutModalProps) {
-  const [loading, setLoading] = useState(false)
-  const [discount, setDiscount] = useState<number>(0) // percentual (0–100)
-  const [additional, setAdditional] = useState<number>(0) // acréscimos/serviços extras
-  const [paymentMethod, setPaymentMethod] = useState<string>("N/A") // Novo estado para o método de pagamento
-  const [error, setError] = useState<string>("")
-  const [checkoutUrl, setCheckoutUrl] = useState<string>("")
+  const [loading, setLoading] = useState(false);
+  const [discount, setDiscount] = useState<number>(0); // discount percentage (0-100)
+  const [additional, setAdditional] = useState<number>(0); // additional charges or extra services
+  const [paymentMethod, setPaymentMethod] = useState<string>("N/A"); // payment method state
+  const [error, setError] = useState<string>("");
+  const [checkoutUrl, setCheckoutUrl] = useState<string>("");
 
-  const subtotal = Number(appointment.totalPrice || 0)
-  const discountAmount = useMemo(() => Math.max(0, subtotal * (discount / 100)), [subtotal, discount])
-  const total = useMemo(() => Math.max(0, subtotal - discountAmount + (Number.isFinite(additional) ? additional : 0)), [subtotal, discountAmount, additional])
+  const subtotal = Number(appointment.totalPrice || 0);
+  const discountAmount = useMemo(
+    () => Math.max(0, subtotal * (discount / 100)),
+    [subtotal, discount],
+  );
+  const total = useMemo(
+    () =>
+      Math.max(
+        0,
+        subtotal -
+          discountAmount +
+          (Number.isFinite(additional) ? additional : 0),
+      ),
+    [subtotal, discountAmount, additional],
+  );
 
   async function handleGenerate() {
     try {
-      setError("")
-      setLoading(true)
+      setError("");
+      setLoading(true);
 
-      // Dados opcionais do comprador se disponíveis no Appointment (ajuste conforme seu modelo)
-      // Exemplo: extraia do appointment.client se existir, mantendo compatibilidade
+      // Optional buyer data if available in the Appointment model
+      // Example: extract from appointment.client if present for backward compatibility
       const customer = undefined as
         | { name?: string; email?: string; phone_number?: string }
-        | undefined
+        | undefined;
 
-      // Itens: se não houver detalhamento, envia um item único com o total (servidor converte para centavos)
+      // Items: sends a single item with the total if no breakdown is provided (server converts to cents)
       const resp = await fetch("/api/infinitepay/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // para rastrear no retorno, use o próprio id do compromisso dentro do order_nsu do lado server
+          // uses appointment ID within order_nsu for tracking on return
           saleId: `appointment-${appointment.id}`,
           amount: total,
           items: [
@@ -75,32 +87,34 @@ export function CheckoutModal({
             },
           ],
           customer,
-          paymentMethod, // Adiciona o método de pagamento
-          // address: {...} // opcional
+          paymentMethod, // includes payment method
+          // address: {...} // optional
         }),
-      })
+      });
 
-      const json = await resp.json()
+      const json = await resp.json();
       if (!resp.ok || !json?.url) {
-        throw new Error(json?.error || "Falha ao gerar link de pagamento")
+        throw new Error(json?.error || "Falha ao gerar link de pagamento");
       }
 
-      setCheckoutUrl(json.url)
-      onSuccess()
-    } catch (e: any) {
-      setError(e?.message || "Erro inesperado ao gerar o link")
+      setCheckoutUrl(json.url);
+      onSuccess();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Erro inesperado ao gerar o link",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   function resetAndClose() {
-    setDiscount(0)
-    setAdditional(0)
-    setPaymentMethod("N/A") // Resetar o método de pagamento
-    setError("")
-    setCheckoutUrl("")
-    onOpenChange(false)
+    setDiscount(0);
+    setAdditional(0);
+    setPaymentMethod("N/A"); // Reset payment method
+    setError("");
+    setCheckoutUrl("");
+    onOpenChange(false);
   }
 
   return (
@@ -108,11 +122,13 @@ export function CheckoutModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Checkout do agendamento</DialogTitle>
-          <DialogDescription>Gere o link de pagamento para o cliente finalizar a cobrança.</DialogDescription>
+          <DialogDescription>
+            Gere o link de pagamento para o cliente finalizar a cobrança.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Resumo de valores */}
+          {/* Value summary */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-sm">Subtotal</Label>
@@ -128,7 +144,9 @@ export function CheckoutModal({
                 value={discount}
                 onChange={(e) => setDiscount(Number(e.target.value || 0))}
               />
-              <div className="text-xs text-muted-foreground">− {formatCurrency(discountAmount)}</div>
+              <div className="text-xs text-muted-foreground">
+                − {formatCurrency(discountAmount)}
+              </div>
             </div>
             <div className="space-y-1 md:col-span-2">
               <Label className="text-sm">Acréscimos</Label>
@@ -156,45 +174,15 @@ export function CheckoutModal({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1 md:col-span-2">
-              <Label className="text-sm">Método (opcional)</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o método de pagamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="N/A">N/A</SelectItem>
-                  <SelectItem value="Pix">Pix</SelectItem>
-                  <SelectItem value="Cartão">Cartão</SelectItem>
-                  <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="Boleto">Boleto</SelectItem>
-                  <SelectItem value="Link">Link</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1 md:col-span-2">
-              <Label className="text-sm">Método (opcional)</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o método de pagamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="N/A">N/A</SelectItem>
-                  <SelectItem value="Pix">Pix</SelectItem>
-                  <SelectItem value="Cartão">Cartão</SelectItem>
-                  <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="Boleto">Boleto</SelectItem>
-                  <SelectItem value="Link">Link</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <Separator />
 
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Total a cobrar</span>
-            <span className="text-lg font-semibold">{formatCurrency(total)}</span>
+            <span className="text-lg font-semibold">
+              {formatCurrency(total)}
+            </span>
           </div>
 
           {!!error && (
@@ -204,15 +192,24 @@ export function CheckoutModal({
             </Alert>
           )}
 
-          {/* Ações */}
+          {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-2 justify-end">
-            <Button variant="outline" onClick={resetAndClose}>Cancelar</Button>
+            <Button variant="outline" onClick={resetAndClose}>
+              Cancelar
+            </Button>
             <Button onClick={handleGenerate} disabled={loading || total <= 0}>
-              {loading ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando…</>) : "Gerar link InfinitePay"}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Gerando…
+                </>
+              ) : (
+                "Gerar link InfinitePay"
+              )}
             </Button>
           </div>
 
-          {/* Link gerado */}
+          {/* Generated link */}
           {checkoutUrl && (
             <div className="space-y-2">
               <Separator />
@@ -223,7 +220,9 @@ export function CheckoutModal({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => window.open(checkoutUrl, "_blank", "noopener,noreferrer")}
+                    onClick={() =>
+                      window.open(checkoutUrl, "_blank", "noopener,noreferrer")
+                    }
                     className="whitespace-nowrap"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
@@ -232,7 +231,9 @@ export function CheckoutModal({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => navigator.clipboard.writeText(checkoutUrl).catch(() => {})}
+                    onClick={() =>
+                      navigator.clipboard.writeText(checkoutUrl).catch(() => {})
+                    }
                     className="whitespace-nowrap"
                   >
                     <Copy className="h-4 w-4 mr-2" />
@@ -243,7 +244,9 @@ export function CheckoutModal({
               <Alert variant="default">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-sm">
-                  Ao finalizar o pagamento, o cliente será redirecionado para a URL configurada e você poderá confirmar via webhook ou verificação manual, conforme sua integração. 
+                  Ao finalizar o pagamento, o cliente será redirecionado para a
+                  URL configurada e você poderá confirmar via webhook ou
+                  verificação manual, conforme sua integração.
                 </AlertDescription>
               </Alert>
             </div>
@@ -251,5 +254,5 @@ export function CheckoutModal({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

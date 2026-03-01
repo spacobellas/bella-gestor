@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect } from "react"
+import type React from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,33 +9,46 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useData } from "@/lib/data-context"
-import type { Client } from "@/types"
-import { Loader2, Save, X, AlertCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { formatDate } from "@/lib/utils"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useData } from "@/lib/data-context";
+import type { Client } from "@/types";
+import { Loader2, Save, AlertCircle, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/lib/utils";
 
 interface ClientModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  client?: Client | null
-  mode: "create" | "edit" | "view"
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  client?: Client | null;
+  mode: "create" | "edit" | "view";
 }
 
-export function ClientModal({ open, onOpenChange, client, mode }: ClientModalProps) {
-  const { addClient, updateClient } = useData()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+export function ClientModal({
+  open,
+  onOpenChange,
+  client,
+  mode,
+}: ClientModalProps) {
+  const { addClient, updateClient } = useData();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -49,7 +62,7 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
     status: "active" as "active" | "inactive",
     marketingConsent: false,
     isClient: false,
-  })
+  });
 
   const [originOption, setOriginOption] = useState<string>("");
   const [originDetail, setOriginDetail] = useState<string>("");
@@ -69,16 +82,16 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         status: "active",
         marketingConsent: client.marketingConsent || false,
         isClient: client.isClient || false,
-      })
+      });
 
-      const sl = (client.serviceLocation || "").trim()
+      const sl = (client.serviceLocation || "").trim();
       if (sl) {
-        const [opt, ...rest] = sl.split(" - ")
-        setOriginOption(opt || "")
-        setOriginDetail(rest.join(" - ") || "")
+        const [opt, ...rest] = sl.split(" - ");
+        setOriginOption(opt || "");
+        setOriginDetail(rest.join(" - ") || "");
       } else {
-        setOriginOption("")
-        setOriginDetail("")
+        setOriginOption("");
+        setOriginDetail("");
       }
     } else if (open && mode === "create") {
       setFormData({
@@ -94,139 +107,145 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         status: "active",
         marketingConsent: false,
         isClient: false,
-      })
+      });
     }
-    setOriginOption("")
-    setOriginDetail("")
-    setValidationErrors({})
-  }, [client, mode, open])
+    setOriginOption("");
+    setOriginDetail("");
+    setValidationErrors({});
+  }, [client, mode, open]);
 
-  const formatPhoneBR = (value: string): string => {
-    const numbers = value.replace(/\D/g, "")
-    const limited = numbers.slice(0, 11)
+  function formatPhoneBR(value: string): string {
+    const numbers = value.replace(/\D/g, "");
+    const limited = numbers.slice(0, 11);
 
     if (limited.length <= 2) {
-      return limited
+      return limited;
     } else if (limited.length <= 6) {
-      return limited.replace(/^(\d{2})(\d{0,4})/, "($1) $2")
+      return limited.replace(/^(\d{2})(\d{0,4})/, "($1) $2");
     } else if (limited.length <= 10) {
-      return limited.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3")
+      return limited.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
     } else {
-      return limited.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
+      return limited.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
     }
   }
 
   const validatePhoneBR = (phone: string): boolean => {
-    const numbers = phone.replace(/\D/g, "")
-    return numbers.length === 10 || numbers.length === 11
-  }
+    const numbers = phone.replace(/\D/g, "");
+    return numbers.length === 10 || numbers.length === 11;
+  };
 
   const validateEmail = (email: string): boolean => {
-    if (!email || email.trim() === "") return true
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-    return emailRegex.test(email)
-  }
+    if (!email || email.trim() === "") return true;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
+  };
 
   const cleanPhone = (phone: string): string => {
-    return phone.replace(/\D/g, "")
-  }
+    return phone.replace(/\D/g, "");
+  };
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (validationErrors[field]) {
       setValidationErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[field]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneBR(e.target.value)
-    handleInputChange("phone", formatted)
-  }
+    const formatted = formatPhoneBR(e.target.value);
+    handleInputChange("phone", formatted);
+  };
 
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {}
+    const errors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      errors.name = "Nome é obrigatório"
+      errors.name = "Nome é obrigatório";
     } else if (formData.name.trim().length < 3) {
-      errors.name = "Nome deve ter pelo menos 3 caracteres"
+      errors.name = "Nome deve ter pelo menos 3 caracteres";
     }
 
     if (!formData.phone.trim()) {
-      errors.phone = "Telefone é obrigatório"
+      errors.phone = "Telefone é obrigatório";
     } else if (!validatePhoneBR(formData.phone)) {
-      errors.phone = "Telefone inválido. Use o formato (XX) XXXXX-XXXX"
+      errors.phone = "Telefone inválido. Use o formato (XX) XXXXX-XXXX";
     }
 
     if (formData.email && !validateEmail(formData.email)) {
-      errors.email = "Email inválido"
+      errors.email = "Email inválido";
     }
 
-    setValidationErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
       toast({
         title: "Erro de validação",
         description: "Por favor, corrija os campos destacados.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const combinedServiceLocation = originOption ? `${originOption}${originDetail ? ` - ${originDetail}` : ""}` : ""
+      const combinedServiceLocation = originOption
+        ? `${originOption}${originDetail ? ` - ${originDetail}` : ""}`
+        : "";
       const dataToSubmit = {
         ...formData,
         phone: cleanPhone(formData.phone),
         serviceLocation: combinedServiceLocation,
-      }
+      };
 
       if (mode === "create") {
-        const result = await addClient(dataToSubmit)
+        const result = await addClient(dataToSubmit);
         if (result) {
           toast({
             title: "Cliente criado",
             description: "O cliente foi criado com sucesso.",
-          })
-          onOpenChange(false)
+          });
+          onOpenChange(false);
         }
       } else if (mode === "edit" && client) {
-        const result = await updateClient(client.id, dataToSubmit)
+        const result = await updateClient(client.id, dataToSubmit);
         if (result) {
           toast({
             title: "Cliente atualizado",
             description: "Os dados do cliente foram atualizados com sucesso.",
-          })
-          onOpenChange(false)
+          });
+          onOpenChange(false);
         }
       }
-    } catch (error: any) {
-      console.error("Error submitting form:", error)
-      const errorTitle = error?.title || "Erro ao processar"
-      const errorMessage = error?.message || "Ocorreu um erro inesperado."
+    } catch (err) {
+      console.error("Error submitting form:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Ocorreu um erro inesperado.";
       toast({
-        title: errorTitle,
+        title: "Erro ao processar",
         description: errorMessage,
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const isReadOnly = mode === "view"
+  const isReadOnly = mode === "view";
   const modalTitle =
-    mode === "create" ? "Novo Cliente" : mode === "edit" ? "Editar Cliente" : "Detalhes do Cliente"
+    mode === "create"
+      ? "Novo Cliente"
+      : mode === "edit"
+        ? "Editar Cliente"
+        : "Detalhes do Cliente";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -234,8 +253,10 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         <DialogHeader>
           <DialogTitle>{modalTitle}</DialogTitle>
           <DialogDescription>
-            {mode === "create" && "Preencha os dados para cadastrar um novo cliente no sistema."}
-            {mode === "edit" && "Atualize as informações do cliente conforme necessário."}
+            {mode === "create" &&
+              "Preencha os dados para cadastrar um novo cliente no sistema."}
+            {mode === "edit" &&
+              "Atualize as informações do cliente conforme necessário."}
             {mode === "view" && "Visualize todas as informações do cliente."}
           </DialogDescription>
         </DialogHeader>
@@ -262,7 +283,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                   className={`${validationErrors.name ? "border-destructive" : ""} ${isReadOnly ? "bg-muted/30 cursor-default" : ""}`}
                 />
                 {validationErrors.name && (
-                  <p className="text-sm text-destructive">{validationErrors.name}</p>
+                  <p className="text-sm text-destructive">
+                    {validationErrors.name}
+                  </p>
                 )}
               </div>
 
@@ -279,7 +302,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                     className={`${validationErrors.email ? "border-destructive" : ""} ${isReadOnly ? "bg-muted/30 cursor-default" : ""}`}
                   />
                   {validationErrors.email && (
-                    <p className="text-sm text-destructive">{validationErrors.email}</p>
+                    <p className="text-sm text-destructive">
+                      {validationErrors.email}
+                    </p>
                   )}
                 </div>
 
@@ -296,7 +321,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                     className={`${validationErrors.phone ? "border-destructive" : ""} ${isReadOnly ? "bg-muted/30 cursor-default" : ""}`}
                   />
                   {validationErrors.phone && (
-                    <p className="text-sm text-destructive">{validationErrors.phone}</p>
+                    <p className="text-sm text-destructive">
+                      {validationErrors.phone}
+                    </p>
                   )}
                   <p className="text-xs text-muted-foreground">
                     Formato: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
@@ -311,7 +338,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                     id="birthDate"
                     type="date"
                     value={formData.birthDate}
-                    onChange={(e) => handleInputChange("birthDate", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("birthDate", e.target.value)
+                    }
                     readOnly={isReadOnly}
                     className={isReadOnly ? "bg-muted/30 cursor-default" : ""}
                     max={new Date().toISOString().split("T")[0]}
@@ -327,7 +356,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                   onChange={(e) => handleInputChange("notes", e.target.value)}
                   placeholder="Adicione observações relevantes sobre o cliente..."
                   readOnly={isReadOnly}
-                  className={isReadOnly ? "bg-muted/30 cursor-default resize-none" : ""}
+                  className={
+                    isReadOnly ? "bg-muted/30 cursor-default resize-none" : ""
+                  }
                   rows={3}
                 />
               </div>
@@ -338,7 +369,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
               {isReadOnly ? (
                 <>
                   <Label>Onde Conheceu</Label>
-                  <div className="text-sm">{formData.serviceLocation || "—"}</div>
+                  <div className="text-sm">
+                    {formData.serviceLocation || "—"}
+                  </div>
                 </>
               ) : (
                 <>
@@ -365,7 +398,8 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
 
                   {originOption && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Será salvo como: {originOption}{originDetail ? ` - ${originDetail}` : ""}
+                      Será salvo como: {originOption}
+                      {originDetail ? ` - ${originDetail}` : ""}
                     </p>
                   )}
                 </>
@@ -376,7 +410,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                 <Input
                   id="preferredSchedule"
                   value={formData.preferredSchedule}
-                  onChange={(e) => handleInputChange("preferredSchedule", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("preferredSchedule", e.target.value)
+                  }
                   placeholder="Ex: Manhã (8h-12h), Tarde (14h-18h)"
                   readOnly={isReadOnly}
                   className={isReadOnly ? "bg-muted/30 cursor-default" : ""}
@@ -395,14 +431,20 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                 ) : (
                   <Select
                     value={formData.referral_source}
-                    onValueChange={(value) => handleInputChange("referral_source", value)}
+                    onValueChange={(value) =>
+                      handleInputChange("referral_source", value)
+                    }
                   >
                     <SelectTrigger id="referral_source">
                       <SelectValue placeholder="Selecione uma opção" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Orgânico Instagram">Orgânico Instagram</SelectItem>
-                      <SelectItem value="Tráfego Instagram">Tráfego Instagram</SelectItem>
+                      <SelectItem value="Orgânico Instagram">
+                        Orgânico Instagram
+                      </SelectItem>
+                      <SelectItem value="Tráfego Instagram">
+                        Tráfego Instagram
+                      </SelectItem>
                       <SelectItem value="Tv Barueri">Tv Barueri</SelectItem>
                       <SelectItem value="Fachada">Fachada</SelectItem>
                       <SelectItem value="Indicação">Indicação</SelectItem>
@@ -417,10 +459,14 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                 <Textarea
                   id="services"
                   value={formData.services}
-                  onChange={(e) => handleInputChange("services", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("services", e.target.value)
+                  }
                   placeholder="Liste os serviços que o cliente demonstrou interesse..."
                   readOnly={isReadOnly}
-                  className={isReadOnly ? "bg-muted/30 cursor-default resize-none" : ""}
+                  className={
+                    isReadOnly ? "bg-muted/30 cursor-default resize-none" : ""
+                  }
                   rows={4}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -437,13 +483,16 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                       Consentimento de Marketing
                     </Label>
                     <p className="text-sm text-muted-foreground">
-                      Cliente autoriza receber comunicações promocionais via WhatsApp, email e SMS
+                      Cliente autoriza receber comunicações promocionais via
+                      WhatsApp, email e SMS
                     </p>
                   </div>
                   <Switch
                     id="marketingConsent"
                     checked={formData.marketingConsent}
-                    onCheckedChange={(checked) => handleInputChange("marketingConsent", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("marketingConsent", checked)
+                    }
                     disabled={isReadOnly}
                   />
                 </div>
@@ -460,7 +509,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                   <Switch
                     id="isClient"
                     checked={formData.isClient}
-                    onCheckedChange={(checked) => handleInputChange("isClient", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("isClient", checked)
+                    }
                     disabled={isReadOnly}
                   />
                 </div>
@@ -468,22 +519,34 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
 
               {client && mode !== "create" && (
                 <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                  <h4 className="font-semibold text-sm">Informações do Sistema</h4>
+                  <h4 className="font-semibold text-sm">
+                    Informações do Sistema
+                  </h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Data de Cadastro:</span>
+                      <span className="text-muted-foreground">
+                        Data de Cadastro:
+                      </span>
                       <div className="font-medium">
-                        {client.registrationDate ? formatDate(client.registrationDate) : "N/A"}
+                        {client.registrationDate
+                          ? formatDate(client.registrationDate)
+                          : "N/A"}
                       </div>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Última Visita:</span>
+                      <span className="text-muted-foreground">
+                        Última Visita:
+                      </span>
                       <div className="font-medium">
-                        {client.lastVisit ? formatDate(client.lastVisit) : "Nunca"}
+                        {client.lastVisit
+                          ? formatDate(client.lastVisit)
+                          : "Nunca"}
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <span className="text-muted-foreground">Total Gasto:</span>
+                      <span className="text-muted-foreground">
+                        Total Gasto:
+                      </span>
                       <div className="font-medium text-lg">
                         R$ {client.totalSpent.toFixed(2)}
                       </div>
@@ -498,7 +561,8 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
             <Alert variant="destructive" className="mt-4">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Existem erros no formulário. Por favor, corrija os campos destacados.
+                Existem erros no formulário. Por favor, corrija os campos
+                destacados.
               </AlertDescription>
             </Alert>
           )}
@@ -506,7 +570,13 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
           <DialogFooter className="mt-6">
             {!isReadOnly ? (
               <>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isLoading}
+                >
+                  <X className="mr-2 h-4 w-4" />
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={isLoading}>
@@ -518,7 +588,9 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {mode === "create" ? "Criar Cliente" : "Salvar Alterações"}
+                      {mode === "create"
+                        ? "Criar Cliente"
+                        : "Salvar Alterações"}
                     </>
                   )}
                 </Button>
@@ -532,5 +604,5 @@ export function ClientModal({ open, onOpenChange, client, mode }: ClientModalPro
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

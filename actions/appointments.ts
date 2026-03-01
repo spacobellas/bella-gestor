@@ -8,7 +8,9 @@ import { Appointment } from "@/types";
 /**
  * Creates a new appointment.
  */
-export async function createAppointmentAction(appointment: Omit<Appointment, "id" | "created_at">) {
+export async function createAppointmentAction(
+  appointment: Omit<Appointment, "id" | "created_at">,
+) {
   try {
     const supabase = getSupabaseServer();
     const payload = {
@@ -41,15 +43,28 @@ export async function createAppointmentAction(appointment: Omit<Appointment, "id
 /**
  * Updates an existing appointment.
  */
-export async function updateAppointmentAction(id: string, appointment: Partial<Appointment>) {
+export async function updateAppointmentAction(
+  id: string,
+  appointment: Partial<Appointment>,
+) {
   try {
     const supabase = getSupabaseServer();
     const payload: any = {
-      ...(appointment.clientId !== undefined ? { client_id: parseInt(appointment.clientId) } : {}),
-      ...(appointment.professionalId !== undefined ? { professional_id: appointment.professionalId } : {}),
-      ...(appointment.startTime !== undefined ? { start_time: appointment.startTime } : {}),
-      ...(appointment.endTime !== undefined ? { end_time: appointment.endTime } : {}),
-      ...(appointment.status !== undefined ? { status: appointment.status } : {}),
+      ...(appointment.clientId !== undefined
+        ? { client_id: parseInt(appointment.clientId) }
+        : {}),
+      ...(appointment.professionalId !== undefined
+        ? { professional_id: appointment.professionalId }
+        : {}),
+      ...(appointment.startTime !== undefined
+        ? { start_time: appointment.startTime }
+        : {}),
+      ...(appointment.endTime !== undefined
+        ? { end_time: appointment.endTime }
+        : {}),
+      ...(appointment.status !== undefined
+        ? { status: appointment.status }
+        : {}),
       ...(appointment.notes !== undefined ? { notes: appointment.notes } : {}),
       updated_at: new Date().toISOString(),
     };
@@ -79,7 +94,10 @@ export async function updateAppointmentAction(id: string, appointment: Partial<A
 export async function deleteAppointmentAction(id: string) {
   try {
     const supabase = getSupabaseServer();
-    const { error } = await supabase.from("appointments").delete().eq("id", parseInt(id));
+    const { error } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", parseInt(id));
 
     if (error) {
       return { success: false, error: parseSupabaseError(error).description };

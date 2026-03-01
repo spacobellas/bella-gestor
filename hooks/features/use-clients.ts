@@ -2,17 +2,17 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { 
-  getActiveClients, 
-  getInactiveClients, 
-  searchClients, 
-  getClients 
+import {
+  getActiveClients,
+  getInactiveClients,
+  searchClients,
+  getClients,
 } from "@/services/clients";
-import { 
-  createClientAction, 
-  updateClientAction, 
-  deactivateClientAction, 
-  reactivateClientAction 
+import {
+  createClientAction,
+  updateClientAction,
+  deactivateClientAction,
+  reactivateClientAction,
 } from "@/actions/clients";
 import { Client } from "@/types";
 
@@ -27,7 +27,9 @@ export function useClients() {
   const refreshClients = useCallback(async (isActive = true) => {
     setIsLoading(true);
     try {
-      const data = isActive ? await getActiveClients() : await getInactiveClients();
+      const data = isActive
+        ? await getActiveClients()
+        : await getInactiveClients();
       setClients(data);
       setError(null);
     } catch (err: any) {
@@ -39,7 +41,9 @@ export function useClients() {
     }
   }, []);
 
-  const addClient = async (client: Omit<Client, "id" | "registrationDate" | "status">) => {
+  const addClient = async (
+    client: Omit<Client, "id" | "registrationDate" | "status">,
+  ) => {
     const promise = createClientAction(client);
     toast.promise(promise, {
       loading: "Criando cliente...",

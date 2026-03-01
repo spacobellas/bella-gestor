@@ -6,24 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -33,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useClients } from "@/hooks/features/use-clients";
 import { ClientList } from "@/components/features/clients/client-list";
 import { ClientModal } from "@/components/modals/client-modal";
@@ -42,44 +24,36 @@ import {
   Search,
   Plus,
   Download,
-  X,
-  Archive,
   Loader2,
-  Users,
   LayoutList,
   LayoutGrid,
-  Grid3X3,
-  Settings2,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function ClientesPage() {
-  const { 
-    clients, 
-    isLoading, 
-    refreshClients, 
-    deactivateClient,
-    searchClients 
-  } = useClients();
+  const { clients, isLoading, refreshClients, deactivateClient } = useClients();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
-  const [gridColumns, setGridColumns] = useState(3);
+  const [gridColumns] = useState(3);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
+
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit" | "view">("create");
+  const [modalMode, setModalMode] = useState<"create" | "edit" | "view">(
+    "create",
+  );
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  
+
   // AlertDialog State
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
-  const [clientToDeactivate, setClientToDeactivate] = useState<string | null>(null);
+  const [clientToDeactivate, setClientToDeactivate] = useState<string | null>(
+    null,
+  );
 
-  const [visibleColumns, setVisibleColumns] = useState({
+  const [visibleColumns] = useState({
     birthDate: true,
     registrationDate: true,
     totalSpent: true,
@@ -120,7 +94,7 @@ export default function ClientesPage() {
     }
   };
 
-  const handleSelectOne = (id: string, index: number, event: any) => {
+  const handleSelectOne = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -131,7 +105,7 @@ export default function ClientesPage() {
   };
 
   const handleExport = () => {
-    const dataToExport = clients.filter(c => selectedIds.has(c.id));
+    const dataToExport = clients.filter((c) => selectedIds.has(c.id));
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes");
@@ -146,13 +120,17 @@ export default function ClientesPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-              <p className="text-muted-foreground">Gerencie sua base de clientes</p>
+              <p className="text-muted-foreground">
+                Gerencie sua base de clientes
+              </p>
             </div>
-            <Button onClick={() => {
-              setSelectedClient(null);
-              setModalMode("create");
-              setModalOpen(true);
-            }}>
+            <Button
+              onClick={() => {
+                setSelectedClient(null);
+                setModalMode("create");
+                setModalOpen(true);
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" /> Novo Cliente
             </Button>
           </div>
@@ -169,16 +147,16 @@ export default function ClientesPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button 
-                  variant={viewMode === "table" ? "default" : "outline"} 
-                  size="icon" 
+                <Button
+                  variant={viewMode === "table" ? "default" : "outline"}
+                  size="icon"
                   onClick={() => setViewMode("table")}
                 >
                   <LayoutList className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant={viewMode === "cards" ? "default" : "outline"} 
-                  size="icon" 
+                <Button
+                  variant={viewMode === "cards" ? "default" : "outline"}
+                  size="icon"
                   onClick={() => setViewMode("cards")}
                 >
                   <LayoutGrid className="h-4 w-4" />
@@ -188,12 +166,18 @@ export default function ClientesPage() {
 
             {selectedIds.size > 0 && (
               <div className="mt-4 p-2 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
-                <span className="text-sm font-medium ml-2">{selectedIds.size} selecionados</span>
+                <span className="text-sm font-medium ml-2">
+                  {selectedIds.size} selecionados
+                </span>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleExport}>
                     <Download className="h-4 w-4 mr-2" /> Exportar
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
                     Limpar
                   </Button>
                 </div>
@@ -218,7 +202,10 @@ export default function ClientesPage() {
                   visibleColumns={visibleColumns}
                   selectedIds={selectedIds}
                   onSelectOne={handleSelectOne}
-                  isAllSelected={selectedIds.size === paginatedClients.length && paginatedClients.length > 0}
+                  isAllSelected={
+                    selectedIds.size === paginatedClients.length &&
+                    paginatedClients.length > 0
+                  }
                   onSelectAll={handleSelectAll}
                   onView={(c) => {
                     setSelectedClient(c);
@@ -244,21 +231,25 @@ export default function ClientesPage() {
         {totalPages > 1 && (
           <div className="p-4 border-t bg-background flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</span>
+              <span className="text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </span>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
                 Anterior
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
               >
                 Próximo
@@ -275,7 +266,10 @@ export default function ClientesPage() {
         client={selectedClient}
       />
 
-      <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+      <AlertDialog
+        open={deactivateDialogOpen}
+        onOpenChange={setDeactivateDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Desativar cliente?</AlertDialogTitle>
@@ -285,7 +279,7 @@ export default function ClientesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={async () => {
                 if (clientToDeactivate) {
                   await deactivateClient(clientToDeactivate);

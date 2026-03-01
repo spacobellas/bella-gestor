@@ -2,19 +2,19 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { 
-  getServices, 
-  getActiveServices, 
-  getServiceVariantsByServiceId, 
-  getServiceVariants 
+import {
+  getServices,
+  getActiveServices,
+  getServiceVariantsByServiceId,
+  getServiceVariants,
 } from "@/services/services";
-import { 
-  createServiceAction, 
-  updateServiceAction, 
-  deleteServiceAction, 
-  createServiceVariantAction, 
-  updateServiceVariantAction, 
-  deleteServiceVariantAction 
+import {
+  createServiceAction,
+  updateServiceAction,
+  deleteServiceAction,
+  createServiceVariantAction,
+  updateServiceVariantAction,
+  deleteServiceVariantAction,
 } from "@/actions/services";
 import { Service, ServiceVariant } from "@/types";
 

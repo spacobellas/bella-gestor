@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,10 +13,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useAuth } from "@/lib/auth-context"
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/lib/auth-context";
 import {
   LayoutDashboard,
   Users,
@@ -27,9 +27,8 @@ import {
   Menu,
   LogOut,
   Sparkles,
-  User,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -38,18 +37,18 @@ const navigation = [
   { name: "Financeiro", href: "/financeiro", icon: DollarSign },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { name: "Serviços", href: "/servicos", icon: Settings },
-]
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { user, logout } = useAuth()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
-    logout()
-    router.push("/")
-  }
+    logout();
+    router.push("/");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,7 +61,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-sidebar-foreground">Spaço Bellas</h1>
+              <h1 className="text-lg font-bold text-sidebar-foreground">
+                Spaço Bellas
+              </h1>
               <p className="text-xs text-muted-foreground">Bella Gestor</p>
             </div>
           </div>
@@ -71,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-1">
               {navigation.map((item) => {
-                const active = pathname === item.href
+                const active = pathname === item.href;
                 return (
                   <li key={item.name}>
                     <Link
@@ -83,11 +84,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                       )}
                     >
-                      <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                      <item.icon
+                        className="h-5 w-5 shrink-0"
+                        aria-hidden="true"
+                      />
                       {item.name}
                     </Link>
                   </li>
-                )
+                );
               })}
             </ul>
           </nav>
@@ -96,21 +100,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="border-t border-sidebar-border pt-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start gap-3 h-auto p-3">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3 h-auto p-3"
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {user?.name.charAt(0) || "A"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start text-sm">
-                    <span className="font-medium text-sidebar-foreground">{user?.name || "Usuário"}</span>
-                    <span className="text-xs text-muted-foreground">{user?.email || ""}</span>
+                    <span className="font-medium text-sidebar-foreground">
+                      {user?.name || "Usuário"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {user?.email || ""}
+                    </span>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Sair
                 </DropdownMenuItem>
@@ -137,7 +151,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <Sparkles className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-sidebar-foreground">Spaço Bellas</h1>
+                  <h1 className="text-lg font-bold text-sidebar-foreground">
+                    Spaço Bellas
+                  </h1>
                   <p className="text-xs text-muted-foreground">Bella Gestor</p>
                 </div>
               </div>
@@ -146,7 +162,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <nav className="flex flex-1 flex-col">
                 <ul role="list" className="flex flex-1 flex-col gap-y-1">
                   {navigation.map((item) => {
-                    const active = pathname === item.href
+                    const active = pathname === item.href;
                     return (
                       <li key={item.name}>
                         <Link
@@ -159,11 +175,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                           )}
                         >
-                          <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                          <item.icon
+                            className="h-5 w-5 shrink-0"
+                            aria-hidden="true"
+                          />
                           {item.name}
                         </Link>
                       </li>
-                    )
+                    );
                   })}
                 </ul>
               </nav>
@@ -191,7 +210,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-destructive focus:text-destructive"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>
@@ -204,5 +226,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
       </main>
     </div>
-  )
+  );
 }

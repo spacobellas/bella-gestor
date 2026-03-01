@@ -2,14 +2,14 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { 
-  getAppointments, 
-  getAppointmentsByDateRange 
+import {
+  getAppointments,
+  getAppointmentsByDateRange,
 } from "@/services/appointments";
-import { 
-  createAppointmentAction, 
-  updateAppointmentAction, 
-  deleteAppointmentAction 
+import {
+  createAppointmentAction,
+  updateAppointmentAction,
+  deleteAppointmentAction,
 } from "@/actions/appointments";
 import { Appointment } from "@/types";
 
@@ -21,24 +21,30 @@ export function useAppointments() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshAppointments = useCallback(async (startDate?: string, endDate?: string) => {
-    setIsLoading(true);
-    try {
-      const data = (startDate && endDate) 
-        ? await getAppointmentsByDateRange(startDate, endDate)
-        : await getAppointments();
-      setAppointments(data);
-      setError(null);
-    } catch (err: any) {
-      const msg = err.message || "Falha ao carregar agendamentos";
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const refreshAppointments = useCallback(
+    async (startDate?: string, endDate?: string) => {
+      setIsLoading(true);
+      try {
+        const data =
+          startDate && endDate
+            ? await getAppointmentsByDateRange(startDate, endDate)
+            : await getAppointments();
+        setAppointments(data);
+        setError(null);
+      } catch (err: any) {
+        const msg = err.message || "Falha ao carregar agendamentos";
+        setError(msg);
+        toast.error(msg);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
-  const addAppointment = async (appointment: Omit<Appointment, "id" | "created_at">) => {
+  const addAppointment = async (
+    appointment: Omit<Appointment, "id" | "created_at">,
+  ) => {
     const promise = createAppointmentAction(appointment);
     toast.promise(promise, {
       loading: "Criando agendamento...",
@@ -54,7 +60,10 @@ export function useAppointments() {
     return (await promise).data;
   };
 
-  const updateAppointment = async (id: string, appointment: Partial<Appointment>) => {
+  const updateAppointment = async (
+    id: string,
+    appointment: Partial<Appointment>,
+  ) => {
     const promise = updateAppointmentAction(id, appointment);
     toast.promise(promise, {
       loading: "Atualizando agendamento...",

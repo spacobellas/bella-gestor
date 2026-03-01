@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -18,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   MoreVertical,
   Edit,
@@ -26,30 +25,32 @@ import {
   Archive,
   Mail,
   Phone,
-  MapPin,
-  Clock,
   Bell,
-  Calendar,
   AlertCircle,
   Plus,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Client } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
+
+interface VisibleColumns {
+  birthDate: boolean;
+  registrationDate: boolean;
+  totalSpent: boolean;
+  serviceLocation: boolean;
+  preferredSchedule: boolean;
+  referral_source: boolean;
+  status: boolean;
+  notes: boolean;
+}
 
 interface ClientListProps {
   clients: Client[];
   viewMode: "table" | "cards";
   gridColumns?: number;
-  visibleColumns: any;
+  visibleColumns: VisibleColumns;
   selectedIds: Set<string>;
-  onSelectOne: (id: string, index: number, event: any) => void;
+  onSelectOne: (id: string, index: number, event: unknown) => void;
   isAllSelected: boolean;
   onSelectAll: () => void;
   onView: (client: Client) => void;
@@ -72,9 +73,8 @@ export function ClientList({
   onDeactivate,
   onCreate,
 }: ClientListProps) {
-  
   const getGridClass = () => {
-    const gridMap: any = {
+    const gridMap: Record<number, string> = {
       1: "grid-cols-1",
       2: "grid-cols-1 md:grid-cols-2",
       3: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
@@ -97,7 +97,9 @@ export function ClientList({
               />
             </TableHead>
             <TableHead className="min-w-[180px] font-semibold">Nome</TableHead>
-            <TableHead className="min-w-[220px] font-semibold">Contato</TableHead>
+            <TableHead className="min-w-[220px] font-semibold">
+              Contato
+            </TableHead>
             {visibleColumns.birthDate && <TableHead>Nascimento</TableHead>}
             {visibleColumns.registrationDate && <TableHead>Cadastro</TableHead>}
             {visibleColumns.totalSpent && <TableHead>Total Gasto</TableHead>}
@@ -106,7 +108,9 @@ export function ClientList({
             {visibleColumns.referral_source && <TableHead>Indicação</TableHead>}
             {visibleColumns.status && <TableHead>Status</TableHead>}
             {visibleColumns.notes && <TableHead>Observações</TableHead>}
-            <TableHead className="w-[80px] sticky right-0 bg-background/95">Ações</TableHead>
+            <TableHead className="w-[80px] sticky right-0 bg-background/95">
+              Ações
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -115,8 +119,15 @@ export function ClientList({
               <TableCell colSpan={12} className="h-64 text-center">
                 <div className="flex flex-col items-center gap-2">
                   <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-muted-foreground">Nenhum cliente encontrado</p>
-                  <Button onClick={onCreate} variant="outline" size="sm" className="mt-2">
+                  <p className="text-muted-foreground">
+                    Nenhum cliente encontrado
+                  </p>
+                  <Button
+                    onClick={onCreate}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Adicionar cliente
                   </Button>
@@ -146,7 +157,9 @@ export function ClientList({
                     {client.email && (
                       <div className="flex items-center gap-2">
                         <Mail className="h-3 w-3 text-muted-foreground" />
-                        <span className="truncate max-w-[150px]">{client.email}</span>
+                        <span className="truncate max-w-[150px]">
+                          {client.email}
+                        </span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
@@ -156,13 +169,17 @@ export function ClientList({
                   </div>
                 </TableCell>
                 {visibleColumns.birthDate && (
-                  <TableCell>{client.birthDate ? formatDate(client.birthDate) : "—"}</TableCell>
+                  <TableCell>
+                    {client.birthDate ? formatDate(client.birthDate) : "—"}
+                  </TableCell>
                 )}
                 {visibleColumns.registrationDate && (
                   <TableCell>{formatDate(client.registrationDate)}</TableCell>
                 )}
                 {visibleColumns.totalSpent && (
-                  <TableCell className="font-semibold">{formatCurrency(client.totalSpent)}</TableCell>
+                  <TableCell className="font-semibold">
+                    {formatCurrency(client.totalSpent)}
+                  </TableCell>
                 )}
                 {visibleColumns.serviceLocation && (
                   <TableCell>{client.serviceLocation || "—"}</TableCell>
@@ -181,7 +198,9 @@ export function ClientList({
                   </TableCell>
                 )}
                 {visibleColumns.notes && (
-                  <TableCell className="max-w-[150px] truncate">{client.notes || "—"}</TableCell>
+                  <TableCell className="max-w-[150px] truncate">
+                    {client.notes || "—"}
+                  </TableCell>
                 )}
                 <TableCell className="sticky right-0 bg-background/95">
                   <DropdownMenu>
@@ -226,7 +245,10 @@ export function ClientList({
         </div>
       ) : (
         clients.map((client, index) => (
-          <Card key={client.id} className="group relative overflow-hidden hover:shadow-lg transition-all border-2 hover:border-primary/20">
+          <Card
+            key={client.id}
+            className="group relative overflow-hidden hover:shadow-lg transition-all border-2 hover:border-primary/20"
+          >
             <div className="absolute top-0 left-0 w-full h-1 bg-primary/50" />
             <div className="p-5">
               <div className="flex items-start justify-between mb-4">
@@ -237,8 +259,13 @@ export function ClientList({
                     className="h-5 w-5"
                   />
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-lg truncate">{client.name}</h3>
-                    <Badge variant={client.isClient ? "default" : "secondary"} className="mt-1">
+                    <h3 className="font-semibold text-lg truncate">
+                      {client.name}
+                    </h3>
+                    <Badge
+                      variant={client.isClient ? "default" : "secondary"}
+                      className="mt-1"
+                    >
                       {client.isClient ? "Cliente" : "Lead"}
                     </Badge>
                   </div>
@@ -256,7 +283,10 @@ export function ClientList({
                     <DropdownMenuItem onClick={() => onEdit(client)}>
                       <Edit className="mr-2 h-4 w-4" /> Editar
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDeactivate(client.id)} className="text-destructive">
+                    <DropdownMenuItem
+                      onClick={() => onDeactivate(client.id)}
+                      className="text-destructive"
+                    >
                       <Archive className="mr-2 h-4 w-4" /> Desativar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -277,12 +307,16 @@ export function ClientList({
                 <div className="flex items-center justify-between mt-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Total gasto</p>
-                    <p className="font-bold text-primary">{formatCurrency(client.totalSpent)}</p>
+                    <p className="font-bold text-primary">
+                      {formatCurrency(client.totalSpent)}
+                    </p>
                   </div>
                   {client.registrationDate && (
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">Cadastro</p>
-                      <p className="font-medium">{formatDate(client.registrationDate)}</p>
+                      <p className="font-medium">
+                        {formatDate(client.registrationDate)}
+                      </p>
                     </div>
                   )}
                 </div>

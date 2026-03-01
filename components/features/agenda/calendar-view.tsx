@@ -1,17 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Clock,
   User,
   Phone,
-  MapPin,
   Calendar as CalendarIcon,
   Edit,
   Trash2,
@@ -24,12 +20,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: { dateTime: string };
+  end: { dateTime: string };
+  htmlLink?: string;
+}
+
 interface CalendarViewProps {
   currentDate: Date;
-  events: any[];
+  events: GoogleCalendarEvent[];
   isLoading: boolean;
-  onEdit: (event: any) => void;
-  onDelete: (event: any) => void;
+  onEdit: (event: GoogleCalendarEvent) => void;
+  onDelete: (event: GoogleCalendarEvent) => void;
 }
 
 export function CalendarView({
@@ -39,7 +44,6 @@ export function CalendarView({
   onEdit,
   onDelete,
 }: CalendarViewProps) {
-  
   const getWeekRange = (date: Date) => {
     const start = new Date(date);
     const dow = (start.getDay() + 7) % 7;
@@ -71,7 +75,7 @@ export function CalendarView({
     start.setHours(0, 0, 0, 0);
     const end = new Date(date);
     end.setHours(23, 59, 59, 999);
-    
+
     return events.filter((ev) => {
       const d = new Date(ev.start.dateTime);
       return d >= start && d <= end;
@@ -93,22 +97,28 @@ export function CalendarView({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {weekDays.map((date, i) => {
+            {weekDays.map((date) => {
               const dayEvents = getEventsForDay(date);
               const today = isSameDate(date, new Date());
-              
+
               return (
                 <div key={date.getTime()} className="border rounded-md">
                   <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/40">
                     <div className="flex items-center gap-2">
                       <Badge variant={today ? "default" : "secondary"}>
-                        {date.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase()}
+                        {date
+                          .toLocaleDateString("pt-BR", { weekday: "short" })
+                          .toUpperCase()}
                       </Badge>
                       <div className="font-semibold">
                         {date.toLocaleDateString("pt-BR")}
                       </div>
                     </div>
-                    {today && <span className="text-xs text-primary font-medium">Hoje</span>}
+                    {today && (
+                      <span className="text-xs text-primary font-medium">
+                        Hoje
+                      </span>
+                    )}
                   </div>
 
                   {dayEvents.length === 0 ? (
@@ -118,12 +128,21 @@ export function CalendarView({
                   ) : (
                     <ul className="divide-y">
                       {dayEvents.map((ev) => {
-                        const clientName = parseField(ev.description, "Cliente: ");
+                        const clientName = parseField(
+                          ev.description,
+                          "Cliente: ",
+                        );
                         const phone = parseField(ev.description, "Telefone: ");
-                        const professionalText = parseField(ev.description, "Profissional: ");
-                        
+                        const professionalText = parseField(
+                          ev.description,
+                          "Profissional: ",
+                        );
+
                         return (
-                          <li key={ev.id} className="px-3 py-3 hover:bg-muted/30 transition">
+                          <li
+                            key={ev.id}
+                            className="px-3 py-3 hover:bg-muted/30 transition"
+                          >
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                               <div className="flex items-start gap-3 min-w-0">
                                 <div className="rounded bg-primary/10 p-2">
@@ -131,12 +150,16 @@ export function CalendarView({
                                 </div>
                                 <div className="min-w-0">
                                   <div className="text-sm font-medium truncate">
-                                    {new Date(ev.start.dateTime).toLocaleTimeString("pt-BR", {
+                                    {new Date(
+                                      ev.start.dateTime,
+                                    ).toLocaleTimeString("pt-BR", {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                     })}{" "}
                                     –{" "}
-                                    {new Date(ev.end.dateTime).toLocaleTimeString("pt-BR", {
+                                    {new Date(
+                                      ev.end.dateTime,
+                                    ).toLocaleTimeString("pt-BR", {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                     })}
@@ -158,7 +181,9 @@ export function CalendarView({
                                       </span>
                                     )}
                                     {professionalText && (
-                                      <Badge variant="outline">{professionalText}</Badge>
+                                      <Badge variant="outline">
+                                        {professionalText}
+                                      </Badge>
                                     )}
                                   </div>
                                 </div>
@@ -177,14 +202,18 @@ export function CalendarView({
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() =>
-                                      window.open(ev.htmlLink || "#", "_blank", "noopener,noreferrer")
+                                      window.open(
+                                        ev.htmlLink || "#",
+                                        "_blank",
+                                        "noopener,noreferrer",
+                                      )
                                     }
                                   >
                                     <CalendarIcon className="h-4 w-4 mr-2" />
                                     Ver no Google
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="text-destructive" 
+                                  <DropdownMenuItem
+                                    className="text-destructive"
                                     onClick={() => onDelete(ev)}
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />

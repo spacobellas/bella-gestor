@@ -35,7 +35,8 @@ export function formatDate(input: string | Date | null | undefined): string {
     return `${d}/${mo}/${y}`;
   }
 
-  const mLocal = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(input);
+  const mLocal =
+    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(input);
   const hasExplicitTZ = /Z|[+-]\d{2}:\d{2}$/.test(input);
   if (mLocal && !hasExplicitTZ) {
     const [, y, mo, d] = mLocal;
@@ -53,7 +54,9 @@ export function formatDate(input: string | Date | null | undefined): string {
 /**
  * Formats a string or Date to Brazilian date-time format (DD/MM/YYYY HH:mm).
  */
-export function formatDateTime(input: string | Date | null | undefined): string {
+export function formatDateTime(
+  input: string | Date | null | undefined,
+): string {
   if (!input) return "";
 
   if (input instanceof Date) {
@@ -73,7 +76,8 @@ export function formatDateTime(input: string | Date | null | undefined): string 
     return `${d}/${mo}/${y} 00:00`;
   }
 
-  const mLocal = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(input);
+  const mLocal =
+    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(input);
   const hasExplicitTZ = /Z|[+-]\d{2}:\d{2}$/.test(input);
   if (mLocal && !hasExplicitTZ) {
     const [, y, mo, d, hh, mm] = mLocal;
@@ -104,7 +108,7 @@ export function zonedNowForInput(tz = SAO_TZ): string {
     hour12: false,
   })
     .formatToParts(new Date())
-    .reduce((a: any, p) => ((a[p.type] = p.value), a), {});
+    .reduce((a: Record<string, string>, p) => ((a[p.type] = p.value), a), {});
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
@@ -116,7 +120,8 @@ export function formatBrazilianPhone(value: string): string {
 
   if (numbers.length === 0) return "";
   if (numbers.length <= 2) return `(${numbers}`;
-  if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+  if (numbers.length <= 6)
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
   if (numbers.length <= 10) {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
   }

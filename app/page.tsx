@@ -1,42 +1,48 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
-import { Sparkles } from "lucide-react"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/lib/auth-context";
+import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const { login } = useAuth()
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
     try {
-      const success = await login(email, password)
+      const success = await login(email, password);
       if (success) {
-        router.push("/dashboard")
+        router.push("/dashboard");
       } else {
-        setError("Email ou senha inválidos")
+        setError("Email ou senha inválidos");
       }
-    } catch (err) {
-      setError("Erro ao fazer login. Tente novamente.")
+    } catch {
+      setError("Erro ao fazer login. Tente novamente.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 p-4">
@@ -46,15 +52,23 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4 shadow-lg">
             <Sparkles className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Bella Gestor</h1>
-          <p className="text-muted-foreground">Sistema de Gestão da Spaço Bellas</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Bella Gestor
+          </h1>
+          <p className="text-muted-foreground">
+            Sistema de Gestão da Spaço Bellas
+          </p>
         </div>
 
         {/* Login Card */}
         <Card className="shadow-xl border-purple-100">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Bem-vinda de volta</CardTitle>
-            <CardDescription className="text-center">Entre com suas credenciais para acessar o sistema</CardDescription>
+            <CardTitle className="text-2xl font-bold text-center">
+              Bem-vinda de volta
+            </CardTitle>
+            <CardDescription className="text-center">
+              Entre com suas credenciais para acessar o sistema
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -89,7 +103,11 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full h-11 text-base font-medium"
+                disabled={isLoading}
+              >
                 {isLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
@@ -102,5 +120,5 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

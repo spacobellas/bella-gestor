@@ -1,15 +1,38 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,48 +42,79 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Separator } from "@/components/ui/separator"
-import { useData } from "@/lib/data-context"
-import type { Client } from "@/types"
-import { Search, ArrowLeft, Mail, Phone, MoreVertical, RefreshCw, Loader2, AlertCircle, MapPin, Clock, Bell, ChevronLeft, ChevronRight, X, Download, Users, LayoutGrid, LayoutList, Settings2, Grid3X3, Calendar } from "lucide-react"
-import { formatCurrency, formatDate } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
-import * as XLSX from "xlsx"
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
+import { useData } from "@/lib/data-context";
+import type { Client } from "@/types";
+import {
+  Search,
+  ArrowLeft,
+  Mail,
+  Phone,
+  MoreVertical,
+  RefreshCw,
+  Loader2,
+  AlertCircle,
+  MapPin,
+  Clock,
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Download,
+  Users,
+  LayoutGrid,
+  LayoutList,
+  Settings2,
+  Grid3X3,
+  Calendar,
+} from "lucide-react";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
-type ViewMode = "table" | "cards"
-type GridColumns = 1 | 2 | 3 | 4 | 5
+type ViewMode = "table" | "cards";
+type GridColumns = 1 | 2 | 3 | 4 | 5;
 
 interface VisibleColumns {
-  birthDate: boolean
-  deactivationDate: boolean
-  totalSpent: boolean
-  serviceLocation: boolean
-  preferredSchedule: boolean
-  referral_source: boolean
-  status: boolean
-  notes: boolean
+  birthDate: boolean;
+  deactivationDate: boolean;
+  totalSpent: boolean;
+  serviceLocation: boolean;
+  preferredSchedule: boolean;
+  referral_source: boolean;
+  status: boolean;
+  notes: boolean;
 }
 
 export default function ClientesInativosPage() {
-  const router = useRouter()
-  const { getInactiveClients, reactivateClient } = useData()
-  const { toast } = useToast()
-  const [inactiveClients, setInactiveClients] = useState<Client[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false)
-  const [clientToReactivate, setClientToReactivate] = useState<string | null>(null)
-  const [isReactivating, setIsReactivating] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(25)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null)
-  const [bulkActionDialogOpen, setBulkActionDialogOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>("table")
-  const [gridColumns, setGridColumns] = useState<GridColumns>(3)
+  const router = useRouter();
+  const { getInactiveClients, reactivateClient } = useData();
+  const { toast } = useToast();
+  const [inactiveClients, setInactiveClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
+  const [clientToReactivate, setClientToReactivate] = useState<string | null>(
+    null,
+  );
+  const [isReactivating, setIsReactivating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
+    null,
+  );
+  const [bulkActionDialogOpen, setBulkActionDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [gridColumns, setGridColumns] = useState<GridColumns>(3);
   const [visibleColumns, setVisibleColumns] = useState<VisibleColumns>({
     birthDate: true,
     deactivationDate: true,
@@ -70,199 +124,224 @@ export default function ClientesInativosPage() {
     referral_source: true,
     status: true,
     notes: true,
-  })
+  });
+
+  const loadInactiveClients = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const clients = await getInactiveClients();
+      setInactiveClients(clients);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao carregar clientes inativos",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getInactiveClients]);
 
   useEffect(() => {
-    loadInactiveClients()
-  }, [])
-
-  const loadInactiveClients = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const clients = await getInactiveClients()
-      setInactiveClients(clients)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar clientes inativos")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    loadInactiveClients();
+  }, [loadInactiveClients]);
 
   const filteredClients = inactiveClients.filter((client) => {
     const matchesSearch =
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      client.phone.includes(searchTerm)
-    return matchesSearch
-  })
+      (client.email &&
+        client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      client.phone.includes(searchTerm);
+    return matchesSearch;
+  });
 
-  const totalPages = Math.ceil(filteredClients.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedClients = filteredClients.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedClients = filteredClients.slice(startIndex, endIndex);
 
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages)
+      setCurrentPage(totalPages);
     }
-  }, [totalPages, currentPage])
+  }, [totalPages, currentPage]);
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [itemsPerPage])
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
-  const isAllSelected = paginatedClients.length > 0 && paginatedClients.every(client => selectedIds.has(client.id))
+  const isAllSelected =
+    paginatedClients.length > 0 &&
+    paginatedClients.every((client) => selectedIds.has(client.id));
 
   const getGridClass = () => {
-    const gridMap = {
+    const gridMap: Record<number, string> = {
       1: "grid-cols-1",
       2: "grid-cols-1 md:grid-cols-2",
       3: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
       4: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-      5: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-    }
-    return gridMap[gridColumns]
-  }
+      5: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
+    };
+    return gridMap[gridColumns];
+  };
 
   const handleSelectAll = () => {
     if (isAllSelected) {
-      const newSelected = new Set(selectedIds)
-      paginatedClients.forEach(c => newSelected.delete(c.id))
-      setSelectedIds(newSelected)
+      const newSelected = new Set(selectedIds);
+      paginatedClients.forEach((c) => newSelected.delete(c.id));
+      setSelectedIds(newSelected);
     } else {
-      const newSelected = new Set(selectedIds)
-      paginatedClients.forEach(c => newSelected.add(c.id))
-      setSelectedIds(newSelected)
+      const newSelected = new Set(selectedIds);
+      paginatedClients.forEach((c) => newSelected.add(c.id));
+      setSelectedIds(newSelected);
     }
-    setLastSelectedIndex(null)
-  }
+    setLastSelectedIndex(null);
+  };
 
-  const handleSelectOne = (clientId: string, index: number, event: React.MouseEvent) => {
-    const newSelected = new Set(selectedIds)
+  const handleSelectOne = (
+    clientId: string,
+    index: number,
+    event: React.MouseEvent,
+  ) => {
+    const newSelected = new Set(selectedIds);
     if (event.shiftKey && lastSelectedIndex !== null) {
-      const start = Math.min(lastSelectedIndex, index)
-      const end = Math.max(lastSelectedIndex, index)
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
       for (let i = start; i <= end; i++) {
-        newSelected.add(paginatedClients[i].id)
+        newSelected.add(paginatedClients[i].id);
       }
     } else {
       if (newSelected.has(clientId)) {
-        newSelected.delete(clientId)
+        newSelected.delete(clientId);
       } else {
-        newSelected.add(clientId)
+        newSelected.add(clientId);
       }
     }
-    setSelectedIds(newSelected)
-    setLastSelectedIndex(index)
-  }
+    setSelectedIds(newSelected);
+    setLastSelectedIndex(index);
+  };
 
   const handleClearSelection = () => {
-    setSelectedIds(new Set())
-    setLastSelectedIndex(null)
-  }
+    setSelectedIds(new Set());
+    setLastSelectedIndex(null);
+  };
 
   const handleBulkExport = () => {
-    const selectedClients = inactiveClients.filter(c => selectedIds.has(c.id))
-    const exportData = selectedClients.map(client => ({
+    const selectedClients = inactiveClients.filter((c) =>
+      selectedIds.has(c.id),
+    );
+    const exportData = selectedClients.map((client) => ({
       Nome: client.name,
       Email: client.email || "—",
       Telefone: client.phone,
-      "Data de Nascimento": client.birthDate ? formatDate(client.birthDate) : "—",
-      "Data de Desativação": client.lastVisit ? formatDate(client.lastVisit) : "—",
+      "Data de Nascimento": client.birthDate
+        ? formatDate(client.birthDate)
+        : "—",
+      "Data de Desativação": client.lastVisit
+        ? formatDate(client.lastVisit)
+        : "—",
       "Total Gasto": formatCurrency(client.totalSpent),
       "Local do Serviço": client.serviceLocation || "—",
       "Horário Preferido": client.preferredSchedule || "—",
       "Fonte de Indicação": client.referral_source || "—",
       "Consentimento Marketing": client.marketingConsent ? "Sim" : "Não",
-      "Status": client.isClient ? "Comprou" : "Não comprou",
-      Observações: client.notes || ""
-    }))
+      Status: client.isClient ? "Comprou" : "Não comprou",
+      Observações: client.notes || "",
+    }));
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes Inativos")
-    XLSX.writeFile(workbook, `clientes_inativos_${new Date().toISOString().split('T')[0]}.xlsx`)
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes Inativos");
+    XLSX.writeFile(
+      workbook,
+      `clientes_inativos_${new Date().toISOString().split("T")[0]}.xlsx`,
+    );
 
     toast({
       title: "Exportação concluída",
       description: `${selectedIds.size} cliente(s) inativo(s) exportado(s) com sucesso.`,
-    })
-    handleClearSelection()
-  }
+    });
+    handleClearSelection();
+  };
 
   const handleBulkReactivate = async () => {
-    setIsReactivating(true)
+    setIsReactivating(true);
     try {
-      const promises = Array.from(selectedIds).map(id => reactivateClient(id))
-      await Promise.all(promises)
+      const promises = Array.from(selectedIds).map((id) =>
+        reactivateClient(id),
+      );
+      await Promise.all(promises);
       toast({
         title: "Clientes reativados",
         description: `${selectedIds.size} cliente(s) reativado(s) com sucesso.`,
-      })
-      handleClearSelection()
-      setBulkActionDialogOpen(false)
-      await loadInactiveClients()
-    } catch (error) {
+      });
+      handleClearSelection();
+      setBulkActionDialogOpen(false);
+      await loadInactiveClients();
+    } catch {
       toast({
         title: "Erro ao reativar",
         description: "Ocorreu um erro ao reativar os clientes.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsReactivating(false)
+      setIsReactivating(false);
     }
-  }
+  };
 
   const handleReactivateClick = (clientId: string) => {
-    setClientToReactivate(clientId)
-    setReactivateDialogOpen(true)
-  }
+    setClientToReactivate(clientId);
+    setReactivateDialogOpen(true);
+  };
 
   const handleReactivateConfirm = async () => {
-    if (!clientToReactivate) return
-    setIsReactivating(true)
+    if (!clientToReactivate) return;
+    setIsReactivating(true);
     try {
-      const success = await reactivateClient(clientToReactivate)
+      const success = await reactivateClient(clientToReactivate);
       if (success) {
         toast({
           title: "Cliente reativado",
-          description: "O cliente foi reativado com sucesso e voltará a aparecer na lista de clientes ativos.",
-        })
-        setReactivateDialogOpen(false)
-        setClientToReactivate(null)
-        await loadInactiveClients()
+          description:
+            "O cliente foi reativado com sucesso e voltará a aparecer na lista de clientes ativos.",
+        });
+        setReactivateDialogOpen(false);
+        setClientToReactivate(null);
+        await loadInactiveClients();
       } else {
         toast({
           title: "Erro ao reativar",
           description: "Não foi possível reativar o cliente. Tente novamente.",
           variant: "destructive",
-        })
+        });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro ao reativar",
         description: "Ocorreu um erro ao reativar o cliente.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsReactivating(false)
+      setIsReactivating(false);
     }
-  }
+  };
 
   const toggleColumn = (column: keyof VisibleColumns) => {
-    setVisibleColumns(prev => ({ ...prev, [column]: !prev[column] }))
-  }
+    setVisibleColumns((prev) => ({ ...prev, [column]: !prev[column] }));
+  };
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Carregando clientes inativos...</p>
+          <p className="text-muted-foreground">
+            Carregando clientes inativos...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -271,7 +350,9 @@ export default function ClientesInativosPage() {
         <Card className="p-8 max-w-md">
           <div className="flex flex-col items-center gap-4 text-center">
             <AlertCircle className="h-12 w-12 text-destructive" />
-            <h2 className="text-2xl font-semibold">Erro ao carregar clientes inativos</h2>
+            <h2 className="text-2xl font-semibold">
+              Erro ao carregar clientes inativos
+            </h2>
             <p className="text-muted-foreground">{error}</p>
             <Button onClick={loadInactiveClients} variant="outline">
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -280,24 +361,26 @@ export default function ClientesInativosPage() {
           </div>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
     <TooltipProvider>
       <div className="flex flex-col h-screen overflow-hidden">
         <div className="flex-none space-y-4 p-4 md:p-6 pb-0">
-          <Button 
-            onClick={() => router.push('/clientes')} 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            onClick={() => router.push("/clientes")}
+            variant="ghost"
+            size="sm"
             className="w-fit"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para Clientes Ativos
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Clientes Inativos</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Clientes Inativos
+            </h1>
             <p className="text-base text-muted-foreground mt-1">
               Clientes que foram desativados e podem ser reativados
             </p>
@@ -312,8 +395,8 @@ export default function ClientesInativosPage() {
                     placeholder="Buscar por nome, email ou telefone..."
                     value={searchTerm}
                     onChange={(e) => {
-                      setSearchTerm(e.target.value)
-                      setCurrentPage(1)
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
                     }}
                     className="pl-10 h-10"
                   />
@@ -358,12 +441,27 @@ export default function ClientesInativosPage() {
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel>Colunas da grade</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuRadioGroup value={gridColumns.toString()} onValueChange={(v) => setGridColumns(Number(v) as GridColumns)}>
-                          <DropdownMenuRadioItem value="1">1 coluna</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="2">2 colunas</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="3">3 colunas</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="4">4 colunas</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="5">5 colunas</DropdownMenuRadioItem>
+                        <DropdownMenuRadioGroup
+                          value={gridColumns.toString()}
+                          onValueChange={(v) =>
+                            setGridColumns(Number(v) as GridColumns)
+                          }
+                        >
+                          <DropdownMenuRadioItem value="1">
+                            1 coluna
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="2">
+                            2 colunas
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="3">
+                            3 colunas
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="4">
+                            4 colunas
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="5">
+                            5 colunas
+                          </DropdownMenuRadioItem>
                         </DropdownMenuRadioGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -390,7 +488,9 @@ export default function ClientesInativosPage() {
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem
                           checked={visibleColumns.deactivationDate}
-                          onCheckedChange={() => toggleColumn("deactivationDate")}
+                          onCheckedChange={() =>
+                            toggleColumn("deactivationDate")
+                          }
                         >
                           Data Desativação
                         </DropdownMenuCheckboxItem>
@@ -402,19 +502,25 @@ export default function ClientesInativosPage() {
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem
                           checked={visibleColumns.serviceLocation}
-                          onCheckedChange={() => toggleColumn("serviceLocation")}
+                          onCheckedChange={() =>
+                            toggleColumn("serviceLocation")
+                          }
                         >
                           Local
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem
                           checked={visibleColumns.preferredSchedule}
-                          onCheckedChange={() => toggleColumn("preferredSchedule")}
+                          onCheckedChange={() =>
+                            toggleColumn("preferredSchedule")
+                          }
                         >
                           Horário
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem
                           checked={visibleColumns.referral_source}
-                          onCheckedChange={() => toggleColumn("referral_source")}
+                          onCheckedChange={() =>
+                            toggleColumn("referral_source")
+                          }
                         >
                           Indicação
                         </DropdownMenuCheckboxItem>
@@ -442,16 +548,30 @@ export default function ClientesInativosPage() {
                     <Badge variant="secondary" className="text-base px-3 py-1">
                       {selectedIds.size} selecionado(s)
                     </Badge>
-                    <Button onClick={handleClearSelection} variant="ghost" size="sm">
+                    <Button
+                      onClick={handleClearSelection}
+                      variant="ghost"
+                      size="sm"
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
-                    <Button onClick={handleBulkExport} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                    <Button
+                      onClick={handleBulkExport}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
+                    >
                       <Download className="mr-2 h-4 w-4" />
                       Exportar
                     </Button>
-                    <Button onClick={() => setBulkActionDialogOpen(true)} variant="default" size="sm" className="flex-1 sm:flex-none">
+                    <Button
+                      onClick={() => setBulkActionDialogOpen(true)}
+                      variant="default"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
+                    >
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Reativar
                     </Button>
@@ -463,10 +583,9 @@ export default function ClientesInativosPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span>
-                    {filteredClients.length === 0 
+                    {filteredClients.length === 0
                       ? "Nenhum cliente inativo encontrado"
-                      : `${filteredClients.length} de ${inactiveClients.length} ${inactiveClients.length === 1 ? 'cliente inativo' : 'clientes inativos'}`
-                    }
+                      : `${filteredClients.length} de ${inactiveClients.length} ${inactiveClients.length === 1 ? "cliente inativo" : "clientes inativos"}`}
                   </span>
                 </div>
               )}
@@ -491,20 +610,30 @@ export default function ClientesInativosPage() {
                       </TableHead>
                       <TableHead className="min-w-[200px] font-semibold">
                         <Tooltip>
-                          <TooltipTrigger className="cursor-help">Nome</TooltipTrigger>
-                          <TooltipContent>Nome completo do cliente</TooltipContent>
+                          <TooltipTrigger className="cursor-help">
+                            Nome
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Nome completo do cliente
+                          </TooltipContent>
                         </Tooltip>
                       </TableHead>
                       <TableHead className="min-w-[220px] font-semibold">
                         <Tooltip>
-                          <TooltipTrigger className="cursor-help">Contato</TooltipTrigger>
-                          <TooltipContent>Email e telefone do cliente</TooltipContent>
+                          <TooltipTrigger className="cursor-help">
+                            Contato
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Email e telefone do cliente
+                          </TooltipContent>
                         </Tooltip>
                       </TableHead>
                       {visibleColumns.birthDate && (
                         <TableHead className="min-w-[110px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Nascimento</TooltipTrigger>
+                            <TooltipTrigger className="cursor-help">
+                              Nascimento
+                            </TooltipTrigger>
                             <TooltipContent>Data de nascimento</TooltipContent>
                           </Tooltip>
                         </TableHead>
@@ -512,31 +641,45 @@ export default function ClientesInativosPage() {
                       {visibleColumns.deactivationDate && (
                         <TableHead className="min-w-[150px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Desativação</TooltipTrigger>
-                            <TooltipContent>Data em que o cliente foi desativado</TooltipContent>
+                            <TooltipTrigger className="cursor-help">
+                              Desativação
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Data em que o cliente foi desativado
+                            </TooltipContent>
                           </Tooltip>
                         </TableHead>
                       )}
                       {visibleColumns.totalSpent && (
                         <TableHead className="min-w-[120px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Total Gasto</TooltipTrigger>
-                            <TooltipContent>Valor total gasto pelo cliente</TooltipContent>
+                            <TooltipTrigger className="cursor-help">
+                              Total Gasto
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Valor total gasto pelo cliente
+                            </TooltipContent>
                           </Tooltip>
                         </TableHead>
                       )}
                       {visibleColumns.serviceLocation && (
                         <TableHead className="min-w-[140px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Local</TooltipTrigger>
-                            <TooltipContent>Local preferido para serviço</TooltipContent>
+                            <TooltipTrigger className="cursor-help">
+                              Local
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Local preferido para serviço
+                            </TooltipContent>
                           </Tooltip>
                         </TableHead>
                       )}
                       {visibleColumns.preferredSchedule && (
                         <TableHead className="min-w-[120px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Horário</TooltipTrigger>
+                            <TooltipTrigger className="cursor-help">
+                              Horário
+                            </TooltipTrigger>
                             <TooltipContent>Horário preferido</TooltipContent>
                           </Tooltip>
                         </TableHead>
@@ -544,7 +687,9 @@ export default function ClientesInativosPage() {
                       {visibleColumns.referral_source && (
                         <TableHead className="min-w-[140px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Indicação</TooltipTrigger>
+                            <TooltipTrigger className="cursor-help">
+                              Indicação
+                            </TooltipTrigger>
                             <TooltipContent>Fonte de indicação</TooltipContent>
                           </Tooltip>
                         </TableHead>
@@ -552,7 +697,9 @@ export default function ClientesInativosPage() {
                       {visibleColumns.status && (
                         <TableHead className="min-w-[110px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Status</TooltipTrigger>
+                            <TooltipTrigger className="cursor-help">
+                              Status
+                            </TooltipTrigger>
                             <TooltipContent>Status de compra</TooltipContent>
                           </Tooltip>
                         </TableHead>
@@ -560,12 +707,18 @@ export default function ClientesInativosPage() {
                       {visibleColumns.notes && (
                         <TableHead className="min-w-[180px] font-semibold">
                           <Tooltip>
-                            <TooltipTrigger className="cursor-help">Observações</TooltipTrigger>
-                            <TooltipContent>Observações sobre o cliente</TooltipContent>
+                            <TooltipTrigger className="cursor-help">
+                              Observações
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Observações sobre o cliente
+                            </TooltipContent>
                           </Tooltip>
                         </TableHead>
                       )}
-                      <TableHead className="w-[80px] font-semibold sticky right-0 bg-background/95">Ações</TableHead>
+                      <TableHead className="w-[80px] font-semibold sticky right-0 bg-background/95">
+                        Ações
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -588,8 +741,16 @@ export default function ClientesInativosPage() {
                           <TableCell>
                             <Checkbox
                               checked={selectedIds.has(client.id)}
-                              onCheckedChange={(e) => handleSelectOne(client.id, index, e as any)}
-                              onClick={(e) => handleSelectOne(client.id, index, e)}
+                              onCheckedChange={() =>
+                                handleSelectOne(
+                                  client.id,
+                                  index,
+                                  {} as React.MouseEvent,
+                                )
+                              }
+                              onClick={(e) =>
+                                handleSelectOne(client.id, index, e)
+                              }
                               aria-label={`Selecionar ${client.name}`}
                               className="h-5 w-5"
                             />
@@ -599,7 +760,12 @@ export default function ClientesInativosPage() {
                               <TooltipTrigger asChild>
                                 <div className="flex items-center gap-2 cursor-help">
                                   <span>{client.name}</span>
-                                  <Badge variant="secondary" className="text-xs">Inativo</Badge>
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    Inativo
+                                  </Badge>
                                   {client.marketingConsent && (
                                     <Bell className="h-4 w-4 text-primary flex-shrink-0" />
                                   )}
@@ -608,7 +774,11 @@ export default function ClientesInativosPage() {
                               <TooltipContent>
                                 <p className="font-semibold">{client.name}</p>
                                 <p className="text-xs">Cliente inativo</p>
-                                {client.marketingConsent && <p className="text-xs mt-1">Consentimento de marketing ativo</p>}
+                                {client.marketingConsent && (
+                                  <p className="text-xs mt-1">
+                                    Consentimento de marketing ativo
+                                  </p>
+                                )}
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
@@ -619,10 +789,14 @@ export default function ClientesInativosPage() {
                                   <TooltipTrigger asChild>
                                     <div className="flex items-center gap-2 text-sm cursor-help">
                                       <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                      <span className="truncate">{client.email}</span>
+                                      <span className="truncate">
+                                        {client.email}
+                                      </span>
                                     </div>
                                   </TooltipTrigger>
-                                  <TooltipContent>{client.email}</TooltipContent>
+                                  <TooltipContent>
+                                    {client.email}
+                                  </TooltipContent>
                                 </Tooltip>
                               )}
                               <Tooltip>
@@ -640,10 +814,14 @@ export default function ClientesInativosPage() {
                             <TableCell>
                               <Tooltip>
                                 <TooltipTrigger className="cursor-help">
-                                  {client.birthDate ? formatDate(client.birthDate) : "—"}
+                                  {client.birthDate
+                                    ? formatDate(client.birthDate)
+                                    : "—"}
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {client.birthDate ? `Data de nascimento: ${formatDate(client.birthDate)}` : "Data de nascimento não informada"}
+                                  {client.birthDate
+                                    ? `Data de nascimento: ${formatDate(client.birthDate)}`
+                                    : "Data de nascimento não informada"}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
@@ -652,10 +830,14 @@ export default function ClientesInativosPage() {
                             <TableCell>
                               <Tooltip>
                                 <TooltipTrigger className="cursor-help">
-                                  {client.lastVisit ? formatDate(client.lastVisit) : "—"}
+                                  {client.lastVisit
+                                    ? formatDate(client.lastVisit)
+                                    : "—"}
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {client.lastVisit ? `Desativado em: ${formatDate(client.lastVisit)}` : "Data não disponível"}
+                                  {client.lastVisit
+                                    ? `Desativado em: ${formatDate(client.lastVisit)}`
+                                    : "Data não disponível"}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
@@ -667,7 +849,8 @@ export default function ClientesInativosPage() {
                                   {formatCurrency(client.totalSpent)}
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  Total gasto: {formatCurrency(client.totalSpent)}
+                                  Total gasto:{" "}
+                                  {formatCurrency(client.totalSpent)}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
@@ -678,11 +861,14 @@ export default function ClientesInativosPage() {
                                 <TooltipTrigger asChild>
                                   <div className="flex items-center gap-2 cursor-help">
                                     <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                    <span className="truncate">{client.serviceLocation || "—"}</span>
+                                    <span className="truncate">
+                                      {client.serviceLocation || "—"}
+                                    </span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {client.serviceLocation || "Local não especificado"}
+                                  {client.serviceLocation ||
+                                    "Local não especificado"}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
@@ -693,11 +879,14 @@ export default function ClientesInativosPage() {
                                 <TooltipTrigger asChild>
                                   <div className="flex items-center gap-2 cursor-help">
                                     <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                    <span className="truncate">{client.preferredSchedule || "—"}</span>
+                                    <span className="truncate">
+                                      {client.preferredSchedule || "—"}
+                                    </span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {client.preferredSchedule || "Horário não especificado"}
+                                  {client.preferredSchedule ||
+                                    "Horário não especificado"}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
@@ -709,7 +898,8 @@ export default function ClientesInativosPage() {
                                   {client.referral_source || "—"}
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {client.referral_source || "Fonte não especificada"}
+                                  {client.referral_source ||
+                                    "Fonte não especificada"}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
@@ -718,12 +908,21 @@ export default function ClientesInativosPage() {
                             <TableCell>
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <Badge variant={client.isClient ? "default" : "secondary"} className="whitespace-nowrap cursor-help">
-                                    {client.isClient ? "Comprou" : "Não comprou"}
+                                  <Badge
+                                    variant={
+                                      client.isClient ? "default" : "secondary"
+                                    }
+                                    className="whitespace-nowrap cursor-help"
+                                  >
+                                    {client.isClient
+                                      ? "Comprou"
+                                      : "Não comprou"}
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {client.isClient ? "Cliente já realizou compras" : "Cliente ainda não realizou compras"}
+                                  {client.isClient
+                                    ? "Cliente já realizou compras"
+                                    : "Cliente ainda não realizou compras"}
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
@@ -733,7 +932,9 @@ export default function ClientesInativosPage() {
                               {client.notes ? (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <p className="truncate max-w-[160px] cursor-help">{client.notes}</p>
+                                    <p className="truncate max-w-[160px] cursor-help">
+                                      {client.notes}
+                                    </p>
                                   </TooltipTrigger>
                                   <TooltipContent className="max-w-xs">
                                     <p>{client.notes}</p>
@@ -747,13 +948,21 @@ export default function ClientesInativosPage() {
                           <TableCell className="sticky right-0 bg-background">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-9 w-9 p-0"
+                                >
                                   <MoreVertical className="h-4 w-4" />
                                   <span className="sr-only">Abrir menu</span>
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={() => handleReactivateClick(client.id)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleReactivateClick(client.id)
+                                  }
+                                >
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                   Reativar Cliente
                                 </DropdownMenuItem>
@@ -778,16 +987,27 @@ export default function ClientesInativosPage() {
                     </div>
                   ) : (
                     paginatedClients.map((client, index) => (
-                      <Card key={client.id} className="group relative overflow-hidden hover:shadow-lg transition-all duration-200 border-2 hover:border-amber-500/30">
+                      <Card
+                        key={client.id}
+                        className="group relative overflow-hidden hover:shadow-lg transition-all duration-200 border-2 hover:border-amber-500/30"
+                      >
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500/50 to-amber-600" />
-                        
+
                         <div className="p-5">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <Checkbox
                                 checked={selectedIds.has(client.id)}
-                                onCheckedChange={(e) => handleSelectOne(client.id, index, e as any)}
-                                onClick={(e) => handleSelectOne(client.id, index, e)}
+                                onCheckedChange={() =>
+                                  handleSelectOne(
+                                    client.id,
+                                    index,
+                                    {} as React.MouseEvent,
+                                  )
+                                }
+                                onClick={(e) =>
+                                  handleSelectOne(client.id, index, e)
+                                }
                                 aria-label={`Selecionar ${client.name}`}
                                 className="h-5 w-5 flex-shrink-0"
                               />
@@ -795,28 +1015,50 @@ export default function ClientesInativosPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="flex items-center gap-2 cursor-help">
-                                      <h3 className="font-semibold text-lg truncate">{client.name}</h3>
+                                      <h3 className="font-semibold text-lg truncate">
+                                        {client.name}
+                                      </h3>
                                       {client.marketingConsent && (
                                         <Bell className="h-4 w-4 text-primary flex-shrink-0" />
                                       )}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p className="font-semibold">{client.name}</p>
+                                    <p className="font-semibold">
+                                      {client.name}
+                                    </p>
                                     <p className="text-xs">Cliente inativo</p>
-                                    {client.marketingConsent && <p className="text-xs mt-1">Consentimento de marketing ativo</p>}
+                                    {client.marketingConsent && (
+                                      <p className="text-xs mt-1">
+                                        Consentimento de marketing ativo
+                                      </p>
+                                    )}
                                   </TooltipContent>
                                 </Tooltip>
                                 <div className="flex gap-2 mt-2">
-                                  <Badge variant="secondary" className="text-xs">Inativo</Badge>
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    Inativo
+                                  </Badge>
                                   <Tooltip>
                                     <TooltipTrigger>
-                                      <Badge variant={client.isClient ? "default" : "outline"} className="text-xs cursor-help">
+                                      <Badge
+                                        variant={
+                                          client.isClient
+                                            ? "default"
+                                            : "outline"
+                                        }
+                                        className="text-xs cursor-help"
+                                      >
                                         {client.isClient ? "Cliente" : "Lead"}
                                       </Badge>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      {client.isClient ? "Já realizou compras" : "Ainda não realizou compras"}
+                                      {client.isClient
+                                        ? "Já realizou compras"
+                                        : "Ainda não realizou compras"}
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
@@ -824,12 +1066,20 @@ export default function ClientesInativosPage() {
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleReactivateClick(client.id)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleReactivateClick(client.id)
+                                  }
+                                >
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                   Reativar Cliente
                                 </DropdownMenuItem>
@@ -838,7 +1088,7 @@ export default function ClientesInativosPage() {
                           </div>
 
                           <Separator className="my-4" />
-                          
+
                           <div className="space-y-3">
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -846,12 +1096,16 @@ export default function ClientesInativosPage() {
                                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10 flex-shrink-0">
                                     <Mail className="h-4 w-4 text-amber-600" />
                                   </div>
-                                  <span className="text-sm truncate flex-1">{client.email || "—"}</span>
+                                  <span className="text-sm truncate flex-1">
+                                    {client.email || "—"}
+                                  </span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="font-medium">Email</p>
-                                <p className="text-xs">{client.email || "Não informado"}</p>
+                                <p className="text-xs">
+                                  {client.email || "Não informado"}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
 
@@ -861,7 +1115,9 @@ export default function ClientesInativosPage() {
                                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10 flex-shrink-0">
                                     <Phone className="h-4 w-4 text-amber-600" />
                                   </div>
-                                  <span className="text-sm">{client.phone}</span>
+                                  <span className="text-sm">
+                                    {client.phone}
+                                  </span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -876,12 +1132,22 @@ export default function ClientesInativosPage() {
                                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10 flex-shrink-0">
                                     <Calendar className="h-4 w-4 text-amber-600" />
                                   </div>
-                                  <span className="text-sm">{client.birthDate ? formatDate(client.birthDate) : "—"}</span>
+                                  <span className="text-sm">
+                                    {client.birthDate
+                                      ? formatDate(client.birthDate)
+                                      : "—"}
+                                  </span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="font-medium">Data de nascimento</p>
-                                <p className="text-xs">{client.birthDate ? formatDate(client.birthDate) : "Não informado"}</p>
+                                <p className="font-medium">
+                                  Data de nascimento
+                                </p>
+                                <p className="text-xs">
+                                  {client.birthDate
+                                    ? formatDate(client.birthDate)
+                                    : "Não informado"}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
 
@@ -891,12 +1157,16 @@ export default function ClientesInativosPage() {
                                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10 flex-shrink-0">
                                     <MapPin className="h-4 w-4 text-amber-600" />
                                   </div>
-                                  <span className="text-sm truncate flex-1">{client.serviceLocation || "—"}</span>
+                                  <span className="text-sm truncate flex-1">
+                                    {client.serviceLocation || "—"}
+                                  </span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="font-medium">Local do serviço</p>
-                                <p className="text-xs">{client.serviceLocation || "Não especificado"}</p>
+                                <p className="text-xs">
+                                  {client.serviceLocation || "Não especificado"}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
 
@@ -906,12 +1176,17 @@ export default function ClientesInativosPage() {
                                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10 flex-shrink-0">
                                     <Clock className="h-4 w-4 text-amber-600" />
                                   </div>
-                                  <span className="text-sm truncate flex-1">{client.preferredSchedule || "—"}</span>
+                                  <span className="text-sm truncate flex-1">
+                                    {client.preferredSchedule || "—"}
+                                  </span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="font-medium">Horário preferido</p>
-                                <p className="text-xs">{client.preferredSchedule || "Não especificado"}</p>
+                                <p className="text-xs">
+                                  {client.preferredSchedule ||
+                                    "Não especificado"}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </div>
@@ -922,13 +1197,20 @@ export default function ClientesInativosPage() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="cursor-help">
-                                  <p className="text-xs text-muted-foreground mb-1">Total gasto</p>
-                                  <p className="text-xl font-bold text-amber-600">{formatCurrency(client.totalSpent)}</p>
+                                  <p className="text-xs text-muted-foreground mb-1">
+                                    Total gasto
+                                  </p>
+                                  <p className="text-xl font-bold text-amber-600">
+                                    {formatCurrency(client.totalSpent)}
+                                  </p>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="font-medium">Total gasto</p>
-                                <p className="text-xs">Valor acumulado: {formatCurrency(client.totalSpent)}</p>
+                                <p className="text-xs">
+                                  Valor acumulado:{" "}
+                                  {formatCurrency(client.totalSpent)}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                             <Tooltip>
@@ -936,14 +1218,18 @@ export default function ClientesInativosPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleReactivateClick(client.id)}
+                                  onClick={() =>
+                                    handleReactivateClick(client.id)
+                                  }
                                   className="gap-2"
                                 >
                                   <RefreshCw className="h-4 w-4" />
                                   Reativar
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Reativar este cliente</TooltipContent>
+                              <TooltipContent>
+                                Reativar este cliente
+                              </TooltipContent>
                             </Tooltip>
                           </div>
                         </div>
@@ -960,7 +1246,9 @@ export default function ClientesInativosPage() {
           <div className="flex-none border-t bg-background shadow-lg">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 md:px-6">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Itens por página:</span>
+                <span className="text-sm text-muted-foreground">
+                  Itens por página:
+                </span>
                 <Select
                   value={itemsPerPage.toString()}
                   onValueChange={(value) => setItemsPerPage(Number(value))}
@@ -977,13 +1265,16 @@ export default function ClientesInativosPage() {
                 </Select>
               </div>
               <p className="text-sm text-muted-foreground">
-                Página {currentPage} de {totalPages} ({filteredClients.length} {filteredClients.length === 1 ? 'cliente' : 'clientes'})
+                Página {currentPage} de {totalPages} ({filteredClients.length}{" "}
+                {filteredClients.length === 1 ? "cliente" : "clientes"})
               </p>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -991,7 +1282,9 @@ export default function ClientesInativosPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
                   disabled={currentPage === totalPages}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -1002,18 +1295,25 @@ export default function ClientesInativosPage() {
         )}
       </div>
 
-      <AlertDialog open={reactivateDialogOpen} onOpenChange={setReactivateDialogOpen}>
+      <AlertDialog
+        open={reactivateDialogOpen}
+        onOpenChange={setReactivateDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Reativar cliente</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja reativar este cliente? Ele voltará a aparecer na lista de
-              clientes ativos e poderá ser usado em novos agendamentos.
+              Tem certeza que deseja reativar este cliente? Ele voltará a
+              aparecer na lista de clientes ativos e poderá ser usado em novos
+              agendamentos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReactivateConfirm} disabled={isReactivating}>
+            <AlertDialogAction
+              onClick={handleReactivateConfirm}
+              disabled={isReactivating}
+            >
               {isReactivating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1030,18 +1330,27 @@ export default function ClientesInativosPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={bulkActionDialogOpen} onOpenChange={setBulkActionDialogOpen}>
+      <AlertDialog
+        open={bulkActionDialogOpen}
+        onOpenChange={setBulkActionDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reativar {selectedIds.size} cliente(s)</AlertDialogTitle>
+            <AlertDialogTitle>
+              Reativar {selectedIds.size} cliente(s)
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja reativar os {selectedIds.size} clientes selecionados? Eles voltarão a aparecer na lista de
-              clientes ativos e poderão ser usados em novos agendamentos.
+              Tem certeza que deseja reativar os {selectedIds.size} clientes
+              selecionados? Eles voltarão a aparecer na lista de clientes ativos
+              e poderão ser usados em novos agendamentos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkReactivate} disabled={isReactivating}>
+            <AlertDialogAction
+              onClick={handleBulkReactivate}
+              disabled={isReactivating}
+            >
               {isReactivating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1055,5 +1364,5 @@ export default function ClientesInativosPage() {
         </AlertDialogContent>
       </AlertDialog>
     </TooltipProvider>
-  )
+  );
 }

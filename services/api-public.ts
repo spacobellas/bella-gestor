@@ -2,10 +2,12 @@
 import type { Client, Service, Professional } from "@/types";
 
 export async function getActiveClients(): Promise<Client[]> {
-  const r = await fetch("/api/admin/clients/active", { credentials: "include" });
+  const r = await fetch("/api/admin/clients/active", {
+    credentials: "include",
+  });
   if (!r.ok) throw new Error("Falha ao carregar clientes");
   const rows = await r.json();
-  // mapeamento mínimo para o domínio, se necessário
+  // Minimum domain mapping if required
   return rows.map((c: any) => ({
     id: String(c.id),
     name: c.full_name,
@@ -18,7 +20,9 @@ export async function getActiveClients(): Promise<Client[]> {
 }
 
 export async function getActiveServices(): Promise<Service[]> {
-  const r = await fetch("/api/admin/services/active", { credentials: "include" });
+  const r = await fetch("/api/admin/services/active", {
+    credentials: "include",
+  });
   if (!r.ok) throw new Error("Falha ao carregar serviços");
   const rows = await r.json();
   return rows.map((s: any) => ({
@@ -41,7 +45,9 @@ export async function getActiveServices(): Promise<Service[]> {
 }
 
 export async function getProfessionals(): Promise<Professional[]> {
-  const r = await fetch("/api/admin/professionals/active", { credentials: "include" });
+  const r = await fetch("/api/admin/professionals/active", {
+    credentials: "include",
+  });
   if (!r.ok) throw new Error("Falha ao carregar profissionais");
   return (await r.json()) as Professional[];
 }
