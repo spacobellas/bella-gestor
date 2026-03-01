@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { PaymentStatus } from "@/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +11,10 @@ export async function POST(req: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     if (!externalTransactionId) {
-      return NextResponse.json({ error: "externalTransactionId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "externalTransactionId is required" },
+        { status: 400 },
+      );
     }
 
     // Invalidate the InfinitePay link (if applicable)
@@ -33,15 +35,27 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message || "Failed to cancel payment in Supabase" }, { status: 400 });
+      return NextResponse.json(
+        { error: error.message || "Failed to cancel payment in Supabase" },
+        { status: 400 },
+      );
     }
 
     if (!data) {
-      return NextResponse.json({ error: "Payment not found or already cancelled" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Payment not found or already cancelled" },
+        { status: 404 },
+      );
     }
 
-    return NextResponse.json({ message: "Payment cancelled successfully", payment: data }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Payment cancelled successfully", payment: data },
+      { status: 200 },
+    );
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Internal server error" },
+      { status: 500 },
+    );
   }
 }

@@ -1,57 +1,65 @@
 // app/api/infinitepay/payment-check/route.ts
-import { NextResponse } from "next/server"
-import { getSupabaseAdmin } from "@/lib/supabase/admin"
+import { NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { type SupabaseClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
-export const revalidate = 0
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-const HANDLE = process.env.INFINITEPAY_HANDLE || "spacobellas"
+const HANDLE = process.env.INFINITEPAY_HANDLE || "spacobellas";
 
 type CheckBody = {
-  order_nsu: string
-  transaction_nsu: string
-  slug: string
-}
+  order_nsu: string;
+  transaction_nsu: string;
+  slug: string;
+};
 
-async function ensureSaleStatus(supabaseAdmin: any, saleId: number) {
+async function ensureSaleStatus(supabaseAdmin: SupabaseClient, saleId: number) {
   const { data: sale } = await supabaseAdmin
     .from("sales")
     .select("id,total_amount,status")
     .eq("id", saleId)
-    .single()
-  if (!sale) return
+    .single();
+  if (!sale) return;
   const { data: pays } = await supabaseAdmin
     .from("payments")
     .select("amount,status")
-    .eq("sale_id", saleId)
+    .eq("sale_id", saleId);
   const totalPaid = (pays || [])
-    .filter((p: any) => p.status === "paid")
-    .reduce((acc: number, p: any) => acc + Number(p.amount), 0)
+    .filter((p) => p.status === "paid")
+    .reduce((acc: number, p) => acc + Number(p.amount), 0);
   if (totalPaid >= Number(sale.total_amount ?? 0) && sale.status !== "paid") {
-    await supabaseAdmin.from("sales").update({ status: "paid" }).eq("id", saleId)
+    await supabaseAdmin
+      .from("sales")
+      .update({ status: "paid" })
+      .eq("id", saleId);
   }
 }
 
 export async function POST(req: Request) {
   try {
-    if (!HANDLE) return NextResponse.json({ ok: false, error: "INFINITEPAY_HANDLE ausente" }, { status: 400 })
+    if (!HANDLE)
+      return NextResponse.json(
+        { ok: false, error: "INFINITEPAY_HANDLE ausente" },
+        { status: 400 },
+      );
 
-    const { order_nsu, transaction_nsu } = (await req.json()) as CheckBody
-    const supabaseAdmin = getSupabaseAdmin()
+    const { order_nsu, transaction_nsu } = (await req.json()) as CheckBody;
+    const supabaseAdmin = getSupabaseAdmin();
 
-    // Procura por ambos identificadores
+    // Search for both identifiers
     const { data: foundByAny } = await supabaseAdmin
       .from("payments")
       .select("id,sale_id,status")
       .in("external_transaction_id", [order_nsu, transaction_nsu])
-      .limit(1)
+      .limit(1);
 
-    let paymentId: number | null = foundByAny?.[0]?.id ?? null
-    let saleId: number | null = foundByAny?.[0]?.sale_id ?? null
+    const paymentId: number | null = foundByAny?.[0]?.id ?? null;
+    let saleId: number | null = foundByAny?.[0]?.sale_id ?? null;
     if (!saleId) {
-      const m = order_nsu.match(/sale-(\d+)-/)
-      if (m) saleId = parseInt(m[1], 10)
+      const m = order_nsu.match(/sale-(\d+)-/);
+      if (m) saleId = parseInt(m[1], 10);
     }
 
     if (paymentId) {
@@ -62,25 +70,31 @@ export async function POST(req: Request) {
           external_transaction_id: transaction_nsu || order_nsu,
           paid_at: new Date().toISOString(),
         })
-        .eq("id", paymentId)
+        .eq("id", paymentId);
     } else if (saleId) {
-      await supabaseAdmin
-        .from("payments")
-        .insert([{
+      await supabaseAdmin.from("payments").insert([
+        {
           sale_id: saleId,
           status: "paid",
-          payment_method: 'Link',
+          payment_method: "Link",
           external_transaction_id: transaction_nsu || order_nsu,
           paid_at: new Date().toISOString(),
-          amount: 0, // sem valor confirmado aqui; webhook atualiza quando chegar
-        }])
+          amount: 0, // Amount not confirmed yet; webhook will update upon arrival
+        },
+      ]);
     } else {
-      return NextResponse.json({ ok: true, skipped: true, reason: "Sem sale_id" }, { status: 200 })
+      return NextResponse.json(
+        { ok: true, skipped: true, reason: "Sem sale_id" },
+        { status: 200 },
+      );
     }
 
-    if (saleId) await ensureSaleStatus(supabaseAdmin, saleId)
-    return NextResponse.json({ ok: true }, { status: 200 })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "Erro interno" }, { status: 200 })
+    if (saleId) await ensureSaleStatus(supabaseAdmin, saleId);
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Erro interno" },
+      { status: 200 },
+    );
   }
 }

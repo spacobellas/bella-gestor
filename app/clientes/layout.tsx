@@ -1,24 +1,28 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
-import { AppShell } from "@/components/app-shell"
+import type React from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { AppShell } from "@/components/app-shell";
 
-export default function ClientesLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
-  const router = useRouter()
+export default function ClientesLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/")
+      router.push("/");
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router]);
 
   if (!isAuthenticated) {
-    return null
+    return null;
   }
 
-  return <AppShell>{children}</AppShell>
+  return <AppShell>{children}</AppShell>;
 }

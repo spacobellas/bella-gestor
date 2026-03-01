@@ -7,16 +7,20 @@ import { Client } from "@/types";
 /**
  * Fetches the count of clients grouped by referral source.
  */
-export async function getReferralSourceCounts(): Promise<{ [key: string]: number }> {
+export async function getReferralSourceCounts(): Promise<{
+  [key: string]: number;
+}> {
   try {
-    const data = await fetchAll<{ referral_source: string | null }>(({ from, to }) =>
-      supabase.from("clients").select("referral_source").range(from, to)
+    const data = await fetchAll<{ referral_source: string | null }>(
+      ({ from, to }) =>
+        supabase.from("clients").select("referral_source").range(from, to),
     );
 
     const counts: { [key: string]: number } = {};
     data.forEach((client) => {
       if (client.referral_source) {
-        counts[client.referral_source] = (counts[client.referral_source] || 0) + 1;
+        counts[client.referral_source] =
+          (counts[client.referral_source] || 0) + 1;
       }
     });
     return counts;
@@ -33,7 +37,7 @@ export async function getClients(
   searchTerm: string = "",
   pageNumber: number = 1,
   pageSize: number = 10,
-  isActive: boolean = true
+  isActive: boolean = true,
 ): Promise<Client[]> {
   try {
     const { data, error } = await supabase.rpc("get_clients_with_total_spent", {
@@ -63,7 +67,7 @@ export async function getActiveClients(): Promise<Client[]> {
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false })
-        .range(from, to)
+        .range(from, to),
     );
     return data.map(supabaseClientToClient);
   } catch (error: any) {
@@ -106,7 +110,7 @@ export async function getInactiveClients(): Promise<Client[]> {
         .select("*")
         .eq("is_active", false)
         .order("created_at", { ascending: false })
-        .range(from, to)
+        .range(from, to),
     );
     return data.map(supabaseClientToClient);
   } catch (error: any) {
@@ -127,7 +131,7 @@ export async function searchClients(query: string): Promise<Client[]> {
         .select("*")
         .or(`full_name.ilike.${q},phone.ilike.${q},email.ilike.${q}`)
         .order("created_at", { ascending: false })
-        .range(from, to)
+        .range(from, to),
     );
     return data.map(supabaseClientToClient);
   } catch (error: any) {

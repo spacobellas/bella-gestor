@@ -6,7 +6,10 @@ import { parseSupabaseError } from "@/lib/error-handler";
 import { Sale, SaleStatus, Payment, PaymentStatus } from "@/types";
 import { getSales } from "@/services/finance";
 
-type NewSale = Omit<Sale, "id" | "payments" | "created_at" | "updatedAt" | "clientName" | "totalAmount"> & {
+type NewSale = Omit<
+  Sale,
+  "id" | "payments" | "created_at" | "updatedAt" | "clientName" | "totalAmount"
+> & {
   totalAmount?: number;
 };
 
@@ -17,14 +20,17 @@ export async function createSaleAction(sale: NewSale) {
   try {
     const supabase = getSupabaseServer();
     const computedTotal =
-      sale.totalAmount ?? sale.items.reduce((acc, it) => acc + it.quantity * it.unitPrice, 0);
+      sale.totalAmount ??
+      sale.items.reduce((acc, it) => acc + it.quantity * it.unitPrice, 0);
 
     const { data: saleRow, error: saleErr } = await supabase
       .from("sales")
       .insert([
         {
           client_id: parseInt(sale.clientId),
-          appointment_id: sale.appointmentId ? parseInt(sale.appointmentId) : null,
+          appointment_id: sale.appointmentId
+            ? parseInt(sale.appointmentId)
+            : null,
           total_amount: computedTotal,
           status: sale.status || "pending",
           notes: sale.notes || null,
@@ -58,7 +64,11 @@ export async function createSaleAction(sale: NewSale) {
 /**
  * Updates a sale status.
  */
-export async function updateSaleStatusAction(id: string, status: SaleStatus, updates?: Partial<Sale>) {
+export async function updateSaleStatusAction(
+  id: string,
+  status: SaleStatus,
+  updates?: Partial<Sale>,
+) {
   try {
     const supabase = getSupabaseServer();
     const updateData: any = { status, updated_at: new Date().toISOString() };
@@ -93,13 +103,15 @@ export async function createPaymentAction(payment: Omit<Payment, "id">) {
       sale_id: parseInt(String(payment.saleId), 10),
       amount: Number(payment.amount),
       payment_method:
-        payment.status === PaymentStatus.PENDING ? null : (payment.paymentMethod ?? null),
+        payment.status === PaymentStatus.PENDING
+          ? null
+          : (payment.paymentMethod ?? null),
       external_transaction_id: payment.externalTransactionId ?? null,
       payment_link_url: payment.linkUrl ?? null,
       status: payment.status as PaymentStatus,
       paid_at:
         payment.status === PaymentStatus.PAID
-          ? payment.paidAt ?? new Date().toISOString()
+          ? (payment.paidAt ?? new Date().toISOString())
           : null,
     };
 
@@ -124,14 +136,17 @@ export async function createPaymentAction(payment: Omit<Payment, "id">) {
 /**
  * Updates a payment status.
  */
-export async function updatePaymentStatusAction(id: string, status: PaymentStatus) {
+export async function updatePaymentStatusAction(
+  id: string,
+  status: PaymentStatus,
+) {
   try {
     const supabase = getSupabaseServer();
     const patch: any = { status, updated_at: new Date().toISOString() };
     if (status === PaymentStatus.CANCELLED) {
       patch.payment_link_url = null;
     }
-    
+
     const { data, error } = await supabase
       .from("payments")
       .update(patch)

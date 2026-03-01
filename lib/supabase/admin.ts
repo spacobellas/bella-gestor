@@ -9,13 +9,20 @@ let adminClient: SupabaseClient | null = null;
 export function getSupabaseAdmin(): SupabaseClient {
   if (adminClient) return adminClient;
 
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder";
+  const url =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    "https://placeholder.supabase.co";
+  const key =
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    "placeholder";
 
   adminClient = createClient(url, key, {
     auth: { persistSession: false },
     global: {
-      fetch: (u, opts: any = {}) => fetch(u, { ...opts, cache: "no-store" }),
+      fetch: (u, opts: RequestInit = {}) =>
+        fetch(u, { ...opts, cache: "no-store" }),
     },
   });
 

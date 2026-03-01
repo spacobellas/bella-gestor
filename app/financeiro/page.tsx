@@ -1,40 +1,46 @@
-"use client"
+"use client";
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useState } from "react"
-import { Combobox, type ComboItem } from "@/components/ui/combobox";
-import type { Sale, Payment } from "@/types"
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Combobox } from "@/components/ui/combobox";
+import type { Sale, Payment, Client, Service, ServiceVariant } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import type { Client, Service, ServiceVariant } from "@/types";
-import { PaymentStatus, SaleStatus } from "@/types"
-import * as clientsApi from "@/services/clients"
-import * as servicesApi from "@/services/services"
-import * as financeApi from "@/services/finance"
-import * as professionalsApi from "@/services/professionals"
+import { PaymentStatus, SaleStatus } from "@/types";
+import * as clientsApi from "@/services/clients";
+import * as servicesApi from "@/services/services";
+import * as financeApi from "@/services/finance";
+import * as professionalsApi from "@/services/professionals";
 
 const api = {
   ...clientsApi,
   ...servicesApi,
   ...financeApi,
-  ...professionalsApi
-}
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+  ...professionalsApi,
+};
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Command, CommandInput, CommandEmpty, CommandList, CommandGroup, CommandItem } from "@/components/ui/command";
-import { Check, ChevronsUpDown, X } from "lucide-react";
-import { cn, zonedNowForInput } from "@/lib/utils";
-import { Trash } from "lucide-react";
-import { formatBrazilianPhone, formatCEP, formatPhoneForInfinitePay, unformatCEP, unformatPhone } from "@/lib/utils";
+import { zonedNowForInput } from "@/lib/utils";
+import {
+  formatBrazilianPhone,
+  formatCEP,
+  formatPhoneForInfinitePay,
+  unformatCEP,
+} from "@/lib/utils";
 import * as XLSX from "xlsx"; // Import the xlsx library
 
 // shadcn/ui
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -42,16 +48,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+} from "@/components/ui/dropdown-menu";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// ícones
+// icons
 import {
   Search,
   Filter,
@@ -66,174 +72,150 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-} from "lucide-react"
+  Trash2,
+} from "lucide-react";
 
-// Tipos de formulário
+// Form types
 type LinkForm = {
-  amount: number
-  customerName?: string
-  customerEmail?: string
-  customerPhone?: string
-  addressCep?: string
-  addressStreet?: string
-  addressNumber?: string
-  addressNeighborhood?: string
-  addressComplement?: string
-}
-
+  amount: number;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  addressCep?: string;
+  addressStreet?: string;
+  addressNumber?: string;
+  addressNeighborhood?: string;
+  addressComplement?: string;
+};
 
 type PaymentForm = {
-  amount: number
-  paymentMethod?: string
-  externalTransactionId?: string
-  paidAt?: string
-}
+  amount: number;
+  paymentMethod?: string;
+  externalTransactionId?: string;
+  paidAt?: string;
+};
 
 type DateRange = {
-  start?: string // yyyy-MM-dd
-  end?: string // yyyy-MM-dd
-}
+  start?: string; // yyyy-MM-dd
+  end?: string; // yyyy-MM-dd
+};
 
 function currency(n: number) {
-  return `R$ ${Number(n || 0).toFixed(2)}`
+  return `R$ ${Number(n || 0).toFixed(2)}`;
 }
 
 function withinRange(iso: string, range: DateRange) {
-  if (!range.start && !range.end) return true
-  const d = new Date(iso).getTime()
-  if (range.start && d < new Date(range.start + "T00:00:00").getTime()) return false
-  if (range.end && d > new Date(range.end + "T23:59:59").getTime()) return false
-  return true
+  if (!range.start && !range.end) return true;
+  const d = new Date(iso).getTime();
+  if (range.start && d < new Date(range.start + "T00:00:00").getTime())
+    return false;
+  if (range.end && d > new Date(range.end + "T23:59:59").getTime())
+    return false;
+  return true;
 }
 
-function ClientComboBox({
-  value, onChange, options, disabled,
-}: { value: string; onChange: (v: string) => void; options: { id: string; name: string }[]; disabled?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find(o => o.id === value);
-  return (
-    <Popover modal open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-9" disabled={disabled}>
-          {selected ? selected.name : "Selecione..."}
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
-        <Command>
-          <CommandInput placeholder="Buscar cliente..." />
-          <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
-          <CommandList>
-            <CommandGroup>
-              {options.map((o) => (
-                <CommandItem key={o.id} value={o.name} onSelect={() => { onChange(o.id); setOpen(false); }}>
-                  <Check className={cn("mr-2 h-4 w-4", o.id === value ? "opacity-100" : "opacity-0")} />
-                  {o.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function VariantComboBox({
-  value, onChange, options, disabled,
-}: { value: string; onChange: (v: string) => void; options: { id: string; label: string }[]; disabled?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find(o => o.id === value);
-  return (
-    <Popover modal open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-9" disabled={disabled}>
-          {selected ? selected.label : "Selecione..."}
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
-        <Command>
-          <CommandInput placeholder="Buscar serviço/tipo..." />
-          <CommandEmpty>Nenhum serviço encontrado.</CommandEmpty>
-          <CommandList>
-            <CommandGroup>
-              {options.map((o) => (
-                <CommandItem key={o.id} value={o.label} onSelect={() => { onChange(o.id); setOpen(false); }}>
-                  <Check className={cn("mr-2 h-4 w-4", o.id === value ? "opacity-100" : "opacity-0")} />
-                  {o.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
+interface SaleApi {
+  createSale: (data: {
+    clientId: string;
+    items: Array<{
+      serviceVariantId: string;
+      quantity: number;
+      unitPrice: number;
+    }>;
+    notes?: string;
+    status: SaleStatus;
+  }) => Promise<Sale>;
+  createPaymentLink: (data: unknown) => Promise<{ url: string }>;
+  createPayment: (data: unknown) => Promise<Payment>;
+  updateSaleStatus: (
+    id: string,
+    status: SaleStatus,
+    updates?: Partial<Sale>,
+  ) => Promise<Sale>;
+  cancelInfinitePayPayment: (id: string) => Promise<void>;
+  updatePaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
 }
 
 export default function FinanceiroPage() {
   const { toast } = useToast();
-  // Estado base
-  const [sales, setSales] = useState<Sale[]>([])
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Base state
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Filtros
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"" | SaleStatus>("")
-  const [dateRange, setDateRange] = useState<DateRange>({})
+  // Filters
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | SaleStatus>("");
+  const [dateRange, setDateRange] = useState<DateRange>({});
 
-  // Paginação
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  // Seções (vendas | pagamentos)
-  const [activeTab, setActiveTab] = useState<"sales" | "payments">("sales")
+  // Sections (sales | payments)
+  const [activeTab, setActiveTab] = useState<"sales" | "payments">("sales");
 
-  // Seleções
-  const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  // Selections
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
-  // Modais já existentes
-  const [choiceOpen, setChoiceOpen] = useState(false)
-  const [linkOpen, setLinkOpen] = useState(false)
-  const [payOpen, setPayOpen] = useState(false)
-  const [saleDetailsOpen, setSaleDetailsOpen] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState<null | { sale: Sale; type: "paid" | "cancel" }>(null)
-  const [confirmPaymentCancelOpen, setConfirmPaymentCancelOpen] = useState<Payment | null>(null)
+  // Existing modals
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [saleDetailsOpen, setSaleDetailsOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState<null | {
+    sale: Sale;
+    type: "paid" | "cancel";
+  }>(null);
+  const [confirmPaymentCancelOpen, setConfirmPaymentCancelOpen] =
+    useState<Payment | null>(null);
 
   // Forms
-  const [linkForm, setLinkForm] = useState<LinkForm>({ amount: 0 })
-  const [payForm, setPayForm] = useState<PaymentForm>({ amount: 0, paidAt: "" })
-  const [submitting, setSubmitting] = useState(false)
+  const [linkForm, setLinkForm] = useState<LinkForm>({ amount: 0 });
+  const [payForm, setPayForm] = useState<PaymentForm>({
+    amount: 0,
+    paidAt: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
-  // =========================
-  // NOVOS ESTADOS E HANDLERS (sem remover nada)
-  // =========================
-  // Modal global para escolher a venda antes de abrir link/pagamento
-  const [selectSaleOpen, setSelectSaleOpen] = useState(false)
-  const [selectIntent, setSelectIntent] = useState<"link" | "pay" | null>(null)
-  const [selectQuery, setSelectQuery] = useState("")
-  // NOVOS ESTADOS (modal de nova venda)
+  // Global modal to select a sale before opening link/payment
+  const [selectSaleOpen, setSelectSaleOpen] = useState(false);
+  const [selectIntent, setSelectIntent] = useState<"link" | "pay" | null>(null);
+  const [selectQuery, setSelectQuery] = useState("");
+  // New states (new sale modal)
   const [newSaleOpen, setNewSaleOpen] = useState(false);
   const [newSaleLoading, setNewSaleLoading] = useState(false);
   const [newSaleError, setNewSaleError] = useState<string | null>(null);
 
   const [services, setServices] = useState<Service[]>([]);
 
-  // listas auxiliares
+  // Auxiliary lists
   const [clients, setClients] = useState<Client[]>([]);
   const [variants, setVariants] = useState<ServiceVariant[]>([]);
 
-  // formulário da nova venda
-  type NewSaleItemForm = { rowId: string; serviceVariantId: string; quantity: number; unitPrice: number };
-  type NewSaleForm = { clientId: string; items: NewSaleItemForm[]; notes?: string };
-  const [newSaleForm, setNewSaleForm] = useState<NewSaleForm>({ clientId: "", items: [] });
+  // New sale form
+  type NewSaleItemForm = {
+    rowId: string;
+    serviceVariantId: string;
+    quantity: number;
+    unitPrice: number;
+  };
+  type NewSaleForm = {
+    clientId: string;
+    items: NewSaleItemForm[];
+    notes?: string;
+  };
+  const [newSaleForm, setNewSaleForm] = useState<NewSaleForm>({
+    clientId: "",
+    items: [],
+  });
 
-  // intenção após salvar: continuar em link ou pagamento
-  const [continueAfterCreate, setContinueAfterCreate] = useState<null | "link" | "pay">(null);
+  // Intent after saving: continue with link or payment
+  const [continueAfterCreate, setContinueAfterCreate] = useState<
+    null | "link" | "pay"
+  >(null);
 
   useEffect(() => {
     if (!newSaleOpen) return;
@@ -248,34 +230,65 @@ export default function FinanceiroPage() {
         if (c) setClients(c as Client[]);
         if (s) setServices(s as Service[]);
         if (v) setVariants(v as ServiceVariant[]);
-      } catch (e) {
-        // silencioso: o modal mostra erro apenas no submit
+      } catch {
+        // Silent: error is only shown on submission
       }
     })();
   }, [newSaleOpen]);
 
   function addItemRow() {
-    setNewSaleForm(f => ({
+    setNewSaleForm((f) => ({
       ...f,
       items: [
         ...f.items,
-        { rowId: crypto.randomUUID(), serviceVariantId: "", quantity: 1, unitPrice: 0 }
+        {
+          rowId: crypto.randomUUID(),
+          serviceVariantId: "",
+          quantity: 1,
+          unitPrice: 0,
+        },
       ],
     }));
   }
 
   function removeItemRow(idx: number) {
-    setNewSaleForm(f => ({
+    setNewSaleForm((f) => ({
       ...f,
       items: f.items.filter((_, i) => i !== idx),
     }));
   }
 
   function onChangeItem(idx: number, patch: Partial<NewSaleItemForm>) {
-    setNewSaleForm(f => ({
+    setNewSaleForm((f) => ({
       ...f,
       items: f.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
     }));
+  }
+
+  // Load data
+  const refreshAll = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [s, p] = await Promise.all([api.getSales(), api.getPayments()]);
+      setSales(s || []);
+      setPayments(p || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao carregar financeiro");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Value helpers
+  function paidAmount(sale: Sale) {
+    return (sale.payments || [])
+      .filter((p) => p.status === PaymentStatus.PAID)
+      .reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  }
+
+  function balance(sale: Sale) {
+    return Math.max(0, Number(sale.totalAmount) - paidAmount(sale));
   }
 
   async function submitNewSale() {
@@ -285,15 +298,15 @@ export default function FinanceiroPage() {
       if (!newSaleForm.clientId || newSaleForm.items.length === 0) {
         throw new Error("Selecione o cliente e adicione pelo menos 1 item");
       }
-      // calcula total localmente; o backend também recalcula
-      const created = await (api as any).createSale?.({
+      // Calculate total locally; backend also recalculates
+      const created = await (api as unknown as SaleApi).createSale({
         clientId: newSaleForm.clientId,
         items: newSaleForm.items.map((it) => ({
           serviceVariantId: it.serviceVariantId,
           quantity: Number(it.quantity || 1),
           unitPrice: Number(it.unitPrice || 0),
         })),
-        notes: (newSaleForm as any).notes || undefined,
+        notes: newSaleForm.notes || undefined,
         status: SaleStatus.PENDING,
       });
       if (!created) throw new Error("Falha ao criar venda");
@@ -301,12 +314,13 @@ export default function FinanceiroPage() {
       setNewSaleOpen(false);
       setSelectedSale(created);
 
-      const due = Math.max(0, Number(created.totalAmount) -
-        (created.payments || []).filter((p: any) => p.status === "paid")
-          .reduce((a: number, p: any) => a + Number(p.amount || 0), 0));
+      const due = balance(created);
 
       if (continueAfterCreate === "link") {
-        setLinkForm({ amount: Number(due.toFixed(2)), customerName: created.clientName });
+        setLinkForm({
+          amount: Number(due.toFixed(2)),
+          customerName: created.clientName,
+        });
         setLinkOpen(true);
       } else if (continueAfterCreate === "pay") {
         setPayForm({
@@ -317,68 +331,49 @@ export default function FinanceiroPage() {
         });
         setPayOpen(true);
       }
-    } catch (e: any) {
-      setNewSaleError(e?.message || "Não foi possível criar a venda");
+    } catch (e) {
+      setNewSaleError(
+        e instanceof Error ? e.message : "Não foi possível criar a venda",
+      );
     } finally {
       setNewSaleLoading(false);
     }
   }
 
   function openSelectSale(intent: "link" | "pay") {
-    setSelectIntent(intent)
-    setSelectSaleOpen(true)
-  }
-
-  function openRegisterPaymentWithMethod(method: string) {
-    setSelectIntent('pay');
-    setPayForm(p => ({ ...p, paymentMethod: method }));
+    setSelectIntent(intent);
     setSelectSaleOpen(true);
   }
 
   function handlePickSaleForAction(sale: Sale) {
-    setSelectedSale(sale)
-    setSelectSaleOpen(false)
+    setSelectedSale(sale);
+    setSelectSaleOpen(false);
 
     if (selectIntent === "link") {
-      const defaultAmount = Number(balance(sale).toFixed(2))
+      const defaultAmount = Number(balance(sale).toFixed(2));
       setLinkForm({
         amount: defaultAmount,
         customerName: sale.clientName,
-      })
-      setLinkOpen(true)
+      });
+      setLinkOpen(true);
     }
     if (selectIntent === "pay") {
-      const defaultAmount = Number(balance(sale).toFixed(2))
+      const defaultAmount = Number(balance(sale).toFixed(2));
       setPayForm({
         amount: defaultAmount,
         paidAt: zonedNowForInput(),
         paymentMethod: "",
         externalTransactionId: "",
-      })
-      setPayOpen(true)
+      });
+      setPayOpen(true);
     }
   }
   // =========================
 
-  // Carregar dados
-  async function refreshAll() {
-    setLoading(true)
-    setError(null)
-    try {
-      const [s, p] = await Promise.all([api.getSales(), api.getPayments()])
-      setSales(s || [])
-      setPayments(p || [])
-    } catch (e: any) {
-      setError(e?.message || "Falha ao carregar financeiro")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
     void refreshAll();
-    
-    // Carregar services e variants globalmente
+
+    // Load services and variants globally
     (async () => {
       try {
         const [s, v] = await Promise.all([
@@ -390,130 +385,127 @@ export default function FinanceiroPage() {
       } catch (e) {
         console.error("Erro ao carregar serviços/tipos:", e);
       }
-    })()
-  }, [])
+    })();
+  }, [refreshAll]);
 
-  // Helpers de valores
-  function paidAmount(sale: Sale) {
-    return (sale.payments || [])
-      .filter((p) => p.status === PaymentStatus.PAID)
-      .reduce((acc, p) => acc + (Number(p.amount) || 0), 0)
-  }
-
-  function balance(sale: Sale) {
-    return Math.max(0, Number(sale.totalAmount) - paidAmount(sale))
-  }
-
-  // Filtros memorizados
+  // Memoized filters
   const filteredSales = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim().toLowerCase();
     const arr = (sales || []).filter((s) => {
       const inText =
         !q ||
         (s.clientName || "").toLowerCase().includes(q) ||
         String(s.id).includes(q) ||
-        (s.items || []).some((it) => (it.serviceVariantName || "").toLowerCase().includes(q))
-      const inStatus = !statusFilter || s.status === statusFilter
-      const inDate = withinRange((s as any).created_at || (s as any).created_at || new Date().toISOString(), dateRange)
-      return inText && inStatus && inDate
-    })
-    return arr
-  }, [sales, search, statusFilter, dateRange])
+        (s.items || []).some((it) =>
+          (it.serviceVariantName || "").toLowerCase().includes(q),
+        );
+      const inStatus = !statusFilter || s.status === statusFilter;
+      const inDate = withinRange(
+        s.created_at || new Date().toISOString(),
+        dateRange,
+      );
+      return inText && inStatus && inDate;
+    });
+    return arr;
+  }, [sales, search, statusFilter, dateRange]);
 
   const filteredPayments = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim().toLowerCase();
     const arr = (payments || []).filter((p) => {
       const inText =
         !q ||
         String(p.id).includes(q) ||
-        ((p as any).saleId && String((p as any).saleId).includes(q)) ||
-        ((p as any).paymentMethod || "").toLowerCase().includes(q) ||
-        ((p as any).externalTransactionId || "").toLowerCase().includes(q)
-      const inDate = withinRange((p as any).created_at || (p as any).created_at || new Date().toISOString(), dateRange)
-      return inText && inDate
-    })
-    return arr
-  }, [payments, search, dateRange])
+        (p.saleId && String(p.saleId).includes(q)) ||
+        (p.paymentMethod || "").toLowerCase().includes(q) ||
+        (p.externalTransactionId || "").toLowerCase().includes(q);
+      const inDate = withinRange(
+        p.created_at || new Date().toISOString(),
+        dateRange,
+      );
+      return inText && inDate;
+    });
+    return arr;
+  }, [payments, search, dateRange]);
 
-  // Paginação por aba
+  // Pagination by tab
   const pagedSales = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return filteredSales.slice(start, start + pageSize)
-  }, [filteredSales, page, pageSize])
+    const start = (page - 1) * pageSize;
+    return filteredSales.slice(start, start + pageSize);
+  }, [filteredSales, page, pageSize]);
 
   const pagedPayments = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return filteredPayments.slice(start, start + pageSize)
-  }, [filteredPayments, page, pageSize])
+    const start = (page - 1) * pageSize;
+    return filteredPayments.slice(start, start + pageSize);
+  }, [filteredPayments, page, pageSize]);
 
-  // Controles de UI
+  // UI Controls
   function resetFilters() {
-    setSearch("")
-    setStatusFilter("")
-    setDateRange({})
-    setPage(1)
+    setSearch("");
+    setStatusFilter("");
+    setDateRange({});
+    setPage(1);
   }
 
   function openChoice(sale: Sale) {
-    setSelectedSale(sale)
-    setChoiceOpen(true)
+    setSelectedSale(sale);
+    setChoiceOpen(true);
   }
 
   function handleChooseExisting() {
-    if (!selectedSale) return
-    setChoiceOpen(false)
-    const defaultAmount = Number(balance(selectedSale).toFixed(2))
+    if (!selectedSale) return;
+    setChoiceOpen(false);
+    const defaultAmount = Number(balance(selectedSale).toFixed(2));
     setLinkForm({
       amount: defaultAmount,
       customerName: selectedSale.clientName,
-    })
-    setLinkOpen(true)
+    });
+    setLinkOpen(true);
   }
 
   function handleCreateNew() {
-    setContinueAfterCreate("link"); // ao salvar, já abre o modal de link
+    setContinueAfterCreate("link"); // Open link modal upon saving
     setChoiceOpen(false);
     setNewSaleOpen(true);
   }
 
   function openRegisterPayment(sale: Sale) {
-    setSelectedSale(sale)
-    const defaultAmount = Number(balance(sale).toFixed(2))
+    setSelectedSale(sale);
+    const defaultAmount = Number(balance(sale).toFixed(2));
     setPayForm({
       amount: defaultAmount,
       paidAt: zonedNowForInput(),
       paymentMethod: "",
       externalTransactionId: "",
-    })
-    setPayOpen(true)
+    });
+    setPayOpen(true);
   }
 
   function openSaleDetails(sale: Sale) {
-    setSelectedSale(sale)
-    setSaleDetailsOpen(true)
+    setSelectedSale(sale);
+    setSaleDetailsOpen(true);
   }
 
   function confirmStatus(sale: Sale, type: "paid" | "cancel") {
-    setConfirmOpen({ sale, type })
+    setConfirmOpen({ sale, type });
   }
 
-  // Ações com backend
+  // Backend actions
   async function submitGenerateLink() {
     if (!selectedSale) return;
     setSubmitting(true);
     setError(null);
-    
+
     try {
-      const out = await api.createPaymentLink({
-        saleId: (selectedSale as any).id,
+      const out = await (api as unknown as SaleApi).createPaymentLink({
+        saleId: selectedSale.id,
         amount: Number(linkForm.amount),
-        items: ((selectedSale as any).items || []).map((it: any) => {
-          const variant = variants.find(v => v.id === it.serviceVariantId);
-          const service = services.find(s => s.id === variant?.serviceId);
+        items: (selectedSale.items || []).map((it) => {
+          const variant = variants.find((v) => v.id === it.serviceVariantId);
+          const service = services.find((s) => s.id === variant?.serviceId);
           return {
             quantity: it.quantity,
-            price: Math.round(Number(it.unitPrice) * 100), // centavos
-            description: `${service?.name || 'Serviço'} - ${variant?.variantName || 'Tipo'}`,
+            price: Math.round(Number(it.unitPrice) * 100), // cents
+            description: `${service?.name || "Serviço"} - ${variant?.variantName || "Tipo"}`,
           };
         }),
         customer: {
@@ -523,30 +515,32 @@ export default function FinanceiroPage() {
             ? formatPhoneForInfinitePay(linkForm.customerPhone)
             : undefined,
         },
-        address: (linkForm.addressCep && linkForm.addressNumber)
-          ? {
-              cep: unformatCEP(linkForm.addressCep),
-              street: linkForm.addressStreet || undefined,
-              number: linkForm.addressNumber,
-              neighborhood: linkForm.addressNeighborhood || undefined,
-              complement: linkForm.addressComplement || undefined,
-            }
-          : undefined,
+        address:
+          linkForm.addressCep && linkForm.addressNumber
+            ? {
+                cep: unformatCEP(linkForm.addressCep),
+                street: linkForm.addressStreet || undefined,
+                number: linkForm.addressNumber,
+                neighborhood: linkForm.addressNeighborhood || undefined,
+                complement: linkForm.addressComplement || undefined,
+              }
+            : undefined,
       });
 
       window.open(out.url, "_blank", "noopener,noreferrer");
       await refreshAll();
       setLinkOpen(false);
-      
+
       toast({
         title: "Sucesso!",
         description: "Link de pagamento gerado com sucesso!",
       });
-    } catch (e: any) {
-      setError(e?.message || "Falha ao gerar link");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao gerar link";
+      setError(msg);
       toast({
         title: "Erro",
-        description: e?.message || "Falha ao gerar link. Tente novamente.",
+        description: msg + ". Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -555,79 +549,100 @@ export default function FinanceiroPage() {
   }
 
   async function submitRegisterPayment() {
-    if (!selectedSale) return
-    setSubmitting(true)
-    setError(null)
+    if (!selectedSale) return;
+    setSubmitting(true);
+    setError(null);
     try {
-      const paymentStatus = payForm.paymentMethod === 'Link' ? PaymentStatus.PENDING : PaymentStatus.PAID;
+      const paymentStatus =
+        payForm.paymentMethod === "Link"
+          ? PaymentStatus.PENDING
+          : PaymentStatus.PAID;
 
-      await api.createPayment({
-        saleId: (selectedSale as any).id,
+      await (api as unknown as SaleApi).createPayment({
+        saleId: selectedSale.id,
         amount: Number(payForm.amount),
         status: paymentStatus,
-        paidAt: payForm.paidAt ? new Date(payForm.paidAt).toISOString() : new Date().toISOString(),
+        paidAt: payForm.paidAt
+          ? new Date(payForm.paidAt).toISOString()
+          : new Date().toISOString(),
         paymentMethod: payForm.paymentMethod || undefined,
         externalTransactionId: payForm.externalTransactionId || undefined,
-      } as any)
-      await refreshAll()
-      setPayOpen(false)
-    } catch (e: any) {
-      setError(e?.message || "Falha ao registrar pagamento")
+      });
+      await refreshAll();
+      setPayOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao registrar pagamento");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   async function applyConfirm() {
-    if (!confirmOpen) return
-    setSubmitting(true)
-    setError(null)
+    if (!confirmOpen) return;
+    setSubmitting(true);
+    setError(null);
     try {
       if (confirmOpen.type === "paid") {
-        await api.updateSaleStatus((confirmOpen.sale as any).id, SaleStatus.PAID)
+        await (api as unknown as SaleApi).updateSaleStatus(
+          confirmOpen.sale.id,
+          SaleStatus.PAID,
+        );
       } else {
-        await api.updateSaleStatus((confirmOpen.sale as any).id, SaleStatus.CANCELLED)
+        await (api as unknown as SaleApi).updateSaleStatus(
+          confirmOpen.sale.id,
+          SaleStatus.CANCELLED,
+        );
       }
-      await refreshAll()
-      setConfirmOpen(null)
-    } catch (e: any) {
-      setError(e?.message || "Falha ao atualizar status")
+      await refreshAll();
+      setConfirmOpen(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao atualizar status");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   function confirmCancelPayment(payment: Payment) {
-    setConfirmPaymentCancelOpen(payment)
+    setConfirmPaymentCancelOpen(payment);
   }
 
   async function applyCancelPayment() {
     if (!confirmPaymentCancelOpen) return;
     setSubmitting(true);
     setError(null);
-    
+
     try {
-      if (confirmPaymentCancelOpen.paymentMethod === 'Link' && confirmPaymentCancelOpen.externalTransactionId) {
-        // 1. Cancela no endpoint (marca cancelled e limpa link)
-        await api.cancelInfinitePayPayment(confirmPaymentCancelOpen.externalTransactionId);
-        
-        // 2. Atualiza localmente (redundante, mas garante consistência)
-        await api.updatePaymentStatus(confirmPaymentCancelOpen.id, PaymentStatus.CANCELLED);
+      if (
+        confirmPaymentCancelOpen.paymentMethod === "Link" &&
+        confirmPaymentCancelOpen.externalTransactionId
+      ) {
+        // 1. Cancel on endpoint (mark as cancelled and clear link)
+        await (api as unknown as SaleApi).cancelInfinitePayPayment(
+          confirmPaymentCancelOpen.externalTransactionId,
+        );
+
+        // 2. Update locally for immediate consistency
+        await (api as unknown as SaleApi).updatePaymentStatus(
+          confirmPaymentCancelOpen.id,
+          PaymentStatus.CANCELLED,
+        );
       }
-      
-      // 3. Só mostra sucesso se chegou aqui sem throw
+
+      // 3. Display success if no exceptions occurred
       await refreshAll();
       setConfirmPaymentCancelOpen(null);
       toast({
         title: "Sucesso!",
         description: "Pagamento cancelado com sucesso!",
       });
-    } catch (e: any) {
+    } catch (e) {
       console.error("Erro ao cancelar pagamento:", e);
-      setError(e?.message || "Falha ao cancelar pagamento");
+      const msg =
+        e instanceof Error ? e.message : "Falha ao cancelar pagamento";
+      setError(msg);
       toast({
         title: "Erro",
-        description: e?.message || "Erro ao cancelar pagamento. Tente novamente.",
+        description: msg + ". Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -635,60 +650,76 @@ export default function FinanceiroPage() {
     }
   }
 
-
-  // Exportação XLSX
+  // XLSX Export
   function exportXLSX() {
     const headers =
       activeTab === "sales"
         ? ["ID", "Cliente", "Status", "Total", "Pago", "Saldo", "Criado Em"]
-        : ["ID", "ID da Venda", "Valor", "Status", "Método", "NSU", "Criado Em"];
+        : [
+            "ID",
+            "ID da Venda",
+            "Valor",
+            "Status",
+            "Método",
+            "NSU",
+            "Criado Em",
+          ];
 
     const data =
       activeTab === "sales"
-        ? filteredSales.map((s: any) => [
+        ? filteredSales.map((s) => [
             s.id,
             s.clientName || "",
             s.status,
             Number(s.totalAmount).toFixed(2),
             paidAmount(s).toFixed(2),
             balance(s).toFixed(2),
-            new Date(s.created_at || s.created_at || "").toLocaleString("pt-BR"),
+            new Date(s.created_at || "").toLocaleString("pt-BR"),
           ])
-        : filteredPayments.map((p: any) => [
+        : filteredPayments.map((p) => [
             p.id,
             p.saleId || "",
             Number(p.amount).toFixed(2),
             p.status,
             p.paymentMethod || "",
             p.externalTransactionId || "",
-            new Date(p.created_at || p.created_at || "").toLocaleString("pt-BR"),
+            new Date(p.created_at || "").toLocaleString("pt-BR"),
           ]);
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, activeTab === "sales" ? "Vendas" : "Pagamentos");
-    XLSX.writeFile(wb, activeTab === "sales" ? "vendas.xlsx" : "pagamentos.xlsx");
+    XLSX.utils.book_append_sheet(
+      wb,
+      ws,
+      activeTab === "sales" ? "Vendas" : "Pagamentos",
+    );
+    XLSX.writeFile(
+      wb,
+      activeTab === "sales" ? "vendas.xlsx" : "pagamentos.xlsx",
+    );
   }
 
-  // Quando muda a aba, resetar página
+  // Reset page on tab change
   useEffect(() => {
-    setPage(1)
-  }, [activeTab, pageSize, filteredSales.length, filteredPayments.length])
+    setPage(1);
+  }, [activeTab, pageSize, filteredSales.length, filteredPayments.length]);
 
   return (
     <div className="space-y-4 p-4">
-      {/* Título */}
+      {/* Title */}
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Financeiro</h1>
-        <p className="text-sm text-muted-foreground">Vendas, pagamentos e links de checkout</p>
+        <p className="text-sm text-muted-foreground">
+          Vendas, pagamentos e links de checkout
+        </p>
       </div>
 
-      {/* Filtros e ações (mobile-first, altamente responsivo) */}
+      {/* Filters and actions (mobile-first, responsive) */}
       <Card>
         <CardContent className="pt-4 sm:pt-6">
-          {/* Filtros */}
+          {/* Filters */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            {/* Busca */}
+            {/* Search */}
             <div className="relative sm:col-span-2">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -705,7 +736,9 @@ export default function FinanceiroPage() {
               <select
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 value={statusFilter}
-                onChange={(e) => setStatusFilter((e.target.value || '') as any)}
+                onChange={(e) =>
+                  setStatusFilter((e.target.value || "") as SaleStatus | "")
+                }
                 aria-label="Status"
               >
                 <option value="">Todos os status</option>
@@ -719,26 +752,36 @@ export default function FinanceiroPage() {
             <Input
               type="date"
               className="h-10 w-full"
-              value={dateRange.start || ''}
-              onChange={(e) => setDateRange((p) => ({ ...p, start: e.target.value || undefined }))}
+              value={dateRange.start || ""}
+              onChange={(e) =>
+                setDateRange((p) => ({
+                  ...p,
+                  start: e.target.value || undefined,
+                }))
+              }
               aria-label="Data inicial"
             />
             <Input
               type="date"
               className="h-10 w-full"
-              value={dateRange.end || ''}
-              onChange={(e) => setDateRange((p) => ({ ...p, end: e.target.value || undefined }))}
+              value={dateRange.end || ""}
+              onChange={(e) =>
+                setDateRange((p) => ({
+                  ...p,
+                  end: e.target.value || undefined,
+                }))
+              }
               aria-label="Data final"
             />
 
-            {/* Ações rápidas */}
+            {/* Quick actions */}
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 className="h-10 w-full"
                 onClick={() => {
-                  resetFilters()
-                  void refreshAll()
+                  resetFilters();
+                  void refreshAll();
                 }}
                 aria-label="Limpar filtros"
               >
@@ -759,28 +802,30 @@ export default function FinanceiroPage() {
             </div>
           </div>
 
-          {/* Abas + toolbar */}
+          {/* Tabs + toolbar */}
           <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {/* Abas */}
+            {/* Tabs */}
             <div className="inline-flex w-full overflow-hidden rounded-md border md:w-auto">
-              {(['sales', 'payments'] as const).map((tab) => (
+              {(["sales", "payments"] as const).map((tab) => (
                 <Button
                   key={tab}
-                  variant={activeTab === tab ? 'default' : 'ghost'}
+                  variant={activeTab === tab ? "default" : "ghost"}
                   onClick={() => setActiveTab(tab)}
                   className="h-9 rounded-none px-3 flex-1 md:flex-none"
                 >
-                  {tab === 'sales' ? 'Vendas' : 'Pagamentos'}
+                  {tab === "sales" ? "Vendas" : "Pagamentos"}
                 </Button>
               ))}
             </div>
 
-            {/* Toolbar responsiva */}
+            {/* Responsive toolbar */}
             <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
-              {/* Itens por página */}
+              {/* Items per page */}
               <div className="inline-flex items-center gap-2 shrink-0">
                 <span className="text-sm text-muted-foreground">
-                  <span className="md:hidden whitespace-nowrap">Itens/pág.</span>
+                  <span className="md:hidden whitespace-nowrap">
+                    Itens/pág.
+                  </span>
                   <span className="hidden md:inline">Itens por página</span>
                 </span>
                 <select
@@ -790,12 +835,14 @@ export default function FinanceiroPage() {
                   aria-label="Itens por página"
                 >
                   {[10, 20, 50].map((n) => (
-                    <option key={n} value={n}>{n}</option>
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* Exportar */}
+              {/* Export */}
               <Button
                 variant="outline"
                 className="h-9 shrink-0"
@@ -811,7 +858,10 @@ export default function FinanceiroPage() {
               <div className="flex flex-1 flex-wrap gap-2 md:flex-none">
                 <Button
                   className="h-9 w-full sm:w-auto"
-                  onClick={() => { setContinueAfterCreate(null); setNewSaleOpen(true); }}
+                  onClick={() => {
+                    setContinueAfterCreate(null);
+                    setNewSaleOpen(true);
+                  }}
                   aria-label="Nova venda"
                 >
                   <span className="md:inline">Nova venda</span>
@@ -820,7 +870,7 @@ export default function FinanceiroPage() {
                 <Button
                   className="h-9 w-full sm:w-auto"
                   variant="outline"
-                  onClick={() => openSelectSale('pay')}
+                  onClick={() => openSelectSale("pay")}
                   aria-label="Registrar pagamento"
                 >
                   <span className="md:inline">Registrar pagamento</span>
@@ -829,7 +879,7 @@ export default function FinanceiroPage() {
                 <Button
                   className="h-9 w-full sm:w-auto"
                   variant="outline"
-                  onClick={() => openSelectSale('link')}
+                  onClick={() => openSelectSale("link")}
                   aria-label="Gerar pagamento"
                 >
                   <span className="md:inline">Gerar pagamento</span>
@@ -845,7 +895,7 @@ export default function FinanceiroPage() {
         </Alert>
       ) : null}
 
-      {/* Conteúdo principal */}
+      {/* Main content */}
       {activeTab === "sales" ? (
         <Card>
           <CardHeader>
@@ -858,44 +908,53 @@ export default function FinanceiroPage() {
                 Carregando informações...
               </div>
             ) : filteredSales.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-4">Nenhuma venda encontrada</div>
+              <div className="text-sm text-muted-foreground p-4">
+                Nenhuma venda encontrada
+              </div>
             ) : (
               <>
                 <ul className="divide-y">
-                  {pagedSales.map((s: any) => {
-                    const paid = paidAmount(s)
-                    const due = balance(s)
+                  {pagedSales.map((s) => {
+                    const paid = paidAmount(s);
+                    const due = balance(s);
                     return (
                       <li key={s.id} className="py-3 px-2">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <div className="font-medium truncate">
-                                {s.clientName || "Cliente"} — {s.items[0]?.serviceName} {s.items[0]?.serviceVariantName}
+                                {s.clientName || "Cliente"} —{" "}
+                                {s.items[0]?.serviceName}{" "}
+                                {s.items[0]?.serviceVariantName}
                               </div>
                               <Badge
                                 variant={
                                   s.status === SaleStatus.PAID
                                     ? "default"
                                     : s.status === SaleStatus.CANCELLED
-                                    ? "secondary"
-                                    : "outline"
+                                      ? "secondary"
+                                      : "outline"
                                 }
                               >
                                 {s.status === SaleStatus.PAID
                                   ? "Pago"
                                   : s.status === SaleStatus.CANCELLED
-                                  ? "Cancelado"
-                                  : "Pendente"}
+                                    ? "Cancelado"
+                                    : "Pendente"}
                               </Badge>
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              Total: {currency(s.totalAmount)} • Pago: {currency(paid)} • Saldo: {currency(due)}
+                              Total: {currency(s.totalAmount)} • Pago:{" "}
+                              {currency(paid)} • Saldo: {currency(due)}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <Button variant="outline" className="h-9" onClick={() => openSaleDetails(s)}>
+                            <Button
+                              variant="outline"
+                              className="h-9"
+                              onClick={() => openSaleDetails(s)}
+                            >
                               <Eye className="h-4 w-4 mr-2" />
                               Detalhes
                             </Button>
@@ -911,7 +970,9 @@ export default function FinanceiroPage() {
                                   <LinkIcon className="h-4 w-4 mr-2" />
                                   Gerar link de pagamento
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openRegisterPayment(s)}>
+                                <DropdownMenuItem
+                                  onClick={() => openRegisterPayment(s)}
+                                >
                                   <CreditCard className="h-4 w-4 mr-2" />
                                   Registrar pagamento
                                 </DropdownMenuItem>
@@ -935,14 +996,15 @@ export default function FinanceiroPage() {
                           </div>
                         </div>
                       </li>
-                    )
+                    );
                   })}
                 </ul>
 
-                {/* Paginação */}
+                {/* Pagination */}
                 <div className="flex items-center justify-between py-3">
                   <div className="text-sm text-muted-foreground">
-                    {filteredSales.length} registro(s) • Página {page} de {Math.max(1, Math.ceil(filteredSales.length / pageSize))}
+                    {filteredSales.length} registro(s) • Página {page} de{" "}
+                    {Math.max(1, Math.ceil(filteredSales.length / pageSize))}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -959,9 +1021,17 @@ export default function FinanceiroPage() {
                       size="icon"
                       className="h-9 w-9"
                       onClick={() =>
-                        setPage((p) => Math.min(Math.ceil(filteredSales.length / pageSize) || 1, p + 1))
+                        setPage((p) =>
+                          Math.min(
+                            Math.ceil(filteredSales.length / pageSize) || 1,
+                            p + 1,
+                          ),
+                        )
                       }
-                      disabled={page >= (Math.ceil(filteredSales.length / pageSize) || 1)}
+                      disabled={
+                        page >=
+                        (Math.ceil(filteredSales.length / pageSize) || 1)
+                      }
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -983,42 +1053,46 @@ export default function FinanceiroPage() {
                 Carregando informações...
               </div>
             ) : filteredPayments.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-4">Nenhum pagamento encontrado</div>
+              <div className="text-sm text-muted-foreground p-4">
+                Nenhum pagamento encontrado
+              </div>
             ) : (
               <>
                 <ul className="divide-y">
-                  {pagedPayments.map((p: any) => (
+                  {pagedPayments.map((p) => (
                     <li key={p.id} className="py-3 px-2">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <div className="font-medium truncate">
-                              {p.clientName || "Cliente"} — {p.serviceName} {p.serviceVariantName}
+                              {p.clientName || "Cliente"} — {p.serviceName}{" "}
+                              {p.serviceVariantName}
                             </div>
                             <Badge
                               variant={
                                 p.status === PaymentStatus.PAID
                                   ? "default"
                                   : p.status === PaymentStatus.PENDING
-                                  ? "outline"
-                                  : "secondary"
+                                    ? "outline"
+                                    : "secondary"
                               }
                             >
                               {p.status === PaymentStatus.PAID
                                 ? "Pago"
                                 : p.status === PaymentStatus.PENDING
-                                ? "Pendente"
-                                : p.status === PaymentStatus.REFUNDED
-                                ? "Estornado"
-                                : p.status === PaymentStatus.FAILED
-                                ? "Falhou"
-                                : p.status === PaymentStatus.CANCELLED
-                                ? "Cancelado"
-                                : p.status}
+                                  ? "Pendente"
+                                  : p.status === PaymentStatus.REFUNDED
+                                    ? "Estornado"
+                                    : p.status === PaymentStatus.FAILED
+                                      ? "Falhou"
+                                      : p.status === PaymentStatus.CANCELLED
+                                        ? "Cancelado"
+                                        : p.status}
                             </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Valor: {currency(p.amount)} • Método: {p.paymentMethod || "—"} • NSU:{" "}
+                            Valor: {currency(p.amount)} • Método:{" "}
+                            {p.paymentMethod || "—"} • NSU:{" "}
                             {p.externalTransactionId || "—"}
                           </div>
                         </div>
@@ -1028,7 +1102,13 @@ export default function FinanceiroPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => window.open(p.linkUrl as string, "_blank", "noopener,noreferrer")}
+                              onClick={() =>
+                                window.open(
+                                  p.linkUrl as string,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                )
+                              }
                             >
                               Ver link
                             </Button>
@@ -1041,12 +1121,19 @@ export default function FinanceiroPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
-                              <DropdownMenuItem onClick={() => setSelectedPayment(p)}>
+                              <DropdownMenuItem
+                                onClick={() => setSelectedPayment(p)}
+                              >
                                 <Eye className="h-4 w-4 mr-2" />
                                 Detalhes
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                disabled={!(p.status === PaymentStatus.PENDING && p.paymentMethod === 'Link')}
+                                disabled={
+                                  !(
+                                    p.status === PaymentStatus.PENDING &&
+                                    p.paymentMethod === "Link"
+                                  )
+                                }
                                 onClick={() => confirmCancelPayment(p)}
                                 className="text-destructive focus:text-destructive"
                               >
@@ -1061,7 +1148,7 @@ export default function FinanceiroPage() {
                   ))}
                 </ul>
 
-                {/* Paginação */}
+                {/* Pagination */}
                 <div className="flex items-center justify-between py-3">
                   <div className="text-sm text-muted-foreground">
                     {filteredPayments.length} registro(s) • Página {page} de{" "}
@@ -1082,9 +1169,17 @@ export default function FinanceiroPage() {
                       size="icon"
                       className="h-9 w-9"
                       onClick={() =>
-                        setPage((p) => Math.min(Math.ceil(filteredPayments.length / pageSize) || 1, p + 1))
+                        setPage((p) =>
+                          Math.min(
+                            Math.ceil(filteredPayments.length / pageSize) || 1,
+                            p + 1,
+                          ),
+                        )
                       }
-                      disabled={page >= (Math.ceil(filteredPayments.length / pageSize) || 1)}
+                      disabled={
+                        page >=
+                        (Math.ceil(filteredPayments.length / pageSize) || 1)
+                      }
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -1096,12 +1191,14 @@ export default function FinanceiroPage() {
         </Card>
       )}
 
-      {/* Modal: escolha do fluxo (botões empilhados e neutros) */}
+      {/* Modal: flow selection (stacked neutral buttons) */}
       <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Como deseja gerar o link?</DialogTitle>
-            <DialogDescription>Escolha usar a venda atual ou criar uma nova antes do checkout.</DialogDescription>
+            <DialogDescription>
+              Escolha usar a venda atual ou criar uma nova antes do checkout.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-1 gap-3">
@@ -1111,7 +1208,9 @@ export default function FinanceiroPage() {
               className="w-full rounded-md border p-4 text-left hover:bg-muted transition"
             >
               <div className="font-medium">Usar venda existente</div>
-              <div className="text-sm text-muted-foreground">Gerar o link com base na venda selecionada</div>
+              <div className="text-sm text-muted-foreground">
+                Gerar the link com base na venda selecionada
+              </div>
             </button>
 
             <button
@@ -1120,73 +1219,97 @@ export default function FinanceiroPage() {
               className="w-full rounded-md border p-4 text-left hover:bg-muted transition"
             >
               <div className="font-medium">Criar nova venda</div>
-              <div className="text-sm text-muted-foreground">Cadastre cliente + serviço antes do link</div>
+              <div className="text-sm text-muted-foreground">
+                Cadastre cliente + serviço antes do link
+              </div>
             </button>
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setChoiceOpen(false)}>Fechar</Button>
+            <Button variant="outline" onClick={() => setChoiceOpen(false)}>
+              Fechar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal: gerar link (venda existente) */}
+      {/* Modal: Generate link (existing sale) */}
       <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Gerar link de pagamento</DialogTitle>
-            <DialogDescription>Preencha os dados para criar o checkout.</DialogDescription>
+            <DialogDescription>
+              Preencha os dados para criar o checkout.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {/* Valor */}
             <div>
-              <Label htmlFor="amount" className="mb-2">Valor a cobrar (R$)</Label>
+              <Label htmlFor="amount" className="mb-2">
+                Valor a cobrar (R$)
+              </Label>
               <Input
                 id="amount"
                 type="text"
                 placeholder="150"
                 value={linkForm.amount}
                 onChange={(e) => {
-                  const formatted = e.target.value.replace(/[^\d.,]/g, '');
-                  setLinkForm((p) => ({ ...p, amount: Number(formatted.replace(',', '.')) || 0 }));
+                  const formatted = e.target.value.replace(/[^\d.,]/g, "");
+                  setLinkForm((p) => ({
+                    ...p,
+                    amount: Number(formatted.replace(",", ".")) || 0,
+                  }));
                 }}
               />
             </div>
 
-            {/* Cliente e E-mail */}
+            {/* Client and Email */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customerName" className="mb-2">Cliente (opcional)</Label>
+                <Label htmlFor="customerName" className="mb-2">
+                  Cliente (opcional)
+                </Label>
                 <Input
                   id="customerName"
                   type="text"
                   placeholder="Emanuel Lázaro"
-                  value={linkForm.customerName || ''}
-                  onChange={(e) => setLinkForm((p) => ({ ...p, customerName: e.target.value }))}
+                  value={linkForm.customerName || ""}
+                  onChange={(e) =>
+                    setLinkForm((p) => ({ ...p, customerName: e.target.value }))
+                  }
                 />
               </div>
               <div>
-                <Label htmlFor="customerEmail" className="mb-2">E-mail (opcional)</Label>
+                <Label htmlFor="customerEmail" className="mb-2">
+                  E-mail (opcional)
+                </Label>
                 <Input
                   id="customerEmail"
                   type="email"
                   placeholder="email@exemplo.com"
-                  value={linkForm.customerEmail || ''}
-                  onChange={(e) => setLinkForm((p) => ({ ...p, customerEmail: e.target.value }))}
+                  value={linkForm.customerEmail || ""}
+                  onChange={(e) =>
+                    setLinkForm((p) => ({
+                      ...p,
+                      customerEmail: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
 
-            {/* Telefone, CEP e Número */}
+            {/* Phone, ZIP, and Number */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="customerPhone" className="mb-2">Telefone (opcional)</Label>
+                <Label htmlFor="customerPhone" className="mb-2">
+                  Telefone (opcional)
+                </Label>
                 <Input
                   id="customerPhone"
                   type="tel"
                   placeholder="(11) 99999-9999"
                   maxLength={15}
-                  value={linkForm.customerPhone || ''}
+                  value={linkForm.customerPhone || ""}
                   onChange={(e) => {
                     const formatted = formatBrazilianPhone(e.target.value);
                     setLinkForm((p) => ({ ...p, customerPhone: formatted }));
@@ -1194,13 +1317,15 @@ export default function FinanceiroPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="addressCep" className="mb-2">CEP</Label>
+                <Label htmlFor="addressCep" className="mb-2">
+                  CEP
+                </Label>
                 <Input
                   id="addressCep"
                   type="text"
                   placeholder="00000-000"
                   maxLength={9}
-                  value={linkForm.addressCep || ''}
+                  value={linkForm.addressCep || ""}
                   onChange={(e) => {
                     const formatted = formatCEP(e.target.value);
                     setLinkForm((p) => ({ ...p, addressCep: formatted }));
@@ -1208,13 +1333,20 @@ export default function FinanceiroPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="addressNumber" className="mb-2">Número</Label>
+                <Label htmlFor="addressNumber" className="mb-2">
+                  Número
+                </Label>
                 <Input
                   id="addressNumber"
                   type="text"
                   placeholder="123"
-                  value={linkForm.addressNumber || ''}
-                  onChange={(e) => setLinkForm((p) => ({ ...p, addressNumber: e.target.value }))}
+                  value={linkForm.addressNumber || ""}
+                  onChange={(e) =>
+                    setLinkForm((p) => ({
+                      ...p,
+                      addressNumber: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -1222,36 +1354,57 @@ export default function FinanceiroPage() {
             {/* Rua e Bairro (NOVA LINHA) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="addressStreet" className="mb-2">Rua (opcional)</Label>
+                <Label htmlFor="addressStreet" className="mb-2">
+                  Rua (opcional)
+                </Label>
                 <Input
                   id="addressStreet"
                   type="text"
                   placeholder="Rua, avenida, logradouro..."
-                  value={linkForm.addressStreet || ''}
-                  onChange={(e) => setLinkForm((p) => ({ ...p, addressStreet: e.target.value }))}
+                  value={linkForm.addressStreet || ""}
+                  onChange={(e) =>
+                    setLinkForm((p) => ({
+                      ...p,
+                      addressStreet: e.target.value,
+                    }))
+                  }
                 />
               </div>
               <div>
-                <Label htmlFor="addressNeighborhood" className="mb-2">Bairro (opcional)</Label>
+                <Label htmlFor="addressNeighborhood" className="mb-2">
+                  Bairro (opcional)
+                </Label>
                 <Input
                   id="addressNeighborhood"
                   type="text"
                   placeholder="Morro Grande"
-                  value={linkForm.addressNeighborhood || ''}
-                  onChange={(e) => setLinkForm((p) => ({ ...p, addressNeighborhood: e.target.value }))}
+                  value={linkForm.addressNeighborhood || ""}
+                  onChange={(e) =>
+                    setLinkForm((p) => ({
+                      ...p,
+                      addressNeighborhood: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
 
             {/* Complemento */}
             <div>
-              <Label htmlFor="addressComplement" className="mb-2">Complemento</Label>
+              <Label htmlFor="addressComplement" className="mb-2">
+                Complemento
+              </Label>
               <Input
                 id="addressComplement"
                 type="text"
                 placeholder="Apto, bloco..."
-                value={linkForm.addressComplement || ''}
-                onChange={(e) => setLinkForm((p) => ({ ...p, addressComplement: e.target.value }))}
+                value={linkForm.addressComplement || ""}
+                onChange={(e) =>
+                  setLinkForm((p) => ({
+                    ...p,
+                    addressComplement: e.target.value,
+                  }))
+                }
               />
             </div>
           </div>
@@ -1263,7 +1416,11 @@ export default function FinanceiroPage() {
           ) : null}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkOpen(false)} disabled={submitting}>
+            <Button
+              variant="outline"
+              onClick={() => setLinkOpen(false)}
+              disabled={submitting}
+            >
               Fechar
             </Button>
             <Button onClick={submitGenerateLink} disabled={submitting}>
@@ -1273,12 +1430,14 @@ export default function FinanceiroPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal: registrar pagamento manual */}
+      {/* Modal: Manual payment registration */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Registrar pagamento</DialogTitle>
-            <DialogDescription>Inclua um pagamento manualmente.</DialogDescription>
+            <DialogDescription>
+              Inclua um pagamento manualmente.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-1 gap-3">
@@ -1289,7 +1448,9 @@ export default function FinanceiroPage() {
                 min="0"
                 step="0.01"
                 value={payForm.amount}
-                onChange={(e) => setPayForm((p) => ({ ...p, amount: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setPayForm((p) => ({ ...p, amount: Number(e.target.value) }))
+                }
               />
             </div>
 
@@ -1297,9 +1458,12 @@ export default function FinanceiroPage() {
               <div>
                 <label className="block text-sm mb-1">Método (opcional)</label>
                 <Select
-                  value={payForm.paymentMethod || 'NA'}
+                  value={payForm.paymentMethod || "NA"}
                   onValueChange={(v) =>
-                    setPayForm(p => ({ ...p, paymentMethod: v === 'NA' ? '' : v }))
+                    setPayForm((p) => ({
+                      ...p,
+                      paymentMethod: v === "NA" ? "" : v,
+                    }))
                   }
                 >
                   <SelectTrigger>
@@ -1315,21 +1479,32 @@ export default function FinanceiroPage() {
                 </Select>
               </div>
               <div>
-                <label className="block text-sm mb-1">Transação/NSU (opcional)</label>
+                <label className="block text-sm mb-1">
+                  Transação/NSU (opcional)
+                </label>
                 <Input
                   placeholder="NSU / ID externo"
                   value={payForm.externalTransactionId || ""}
-                  onChange={(e) => setPayForm((p) => ({ ...p, externalTransactionId: e.target.value }))}
+                  onChange={(e) =>
+                    setPayForm((p) => ({
+                      ...p,
+                      externalTransactionId: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm mb-1">Data/hora do pagamento</label>
+              <label className="block text-sm mb-1">
+                Data/hora do pagamento
+              </label>
               <Input
                 type="datetime-local"
                 value={payForm.paidAt || ""}
-                onChange={(e) => setPayForm((p) => ({ ...p, paidAt: e.target.value }))}
+                onChange={(e) =>
+                  setPayForm((p) => ({ ...p, paidAt: e.target.value }))
+                }
               />
             </div>
 
@@ -1341,17 +1516,24 @@ export default function FinanceiroPage() {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPayOpen(false)} disabled={submitting}>
+            <Button
+              variant="outline"
+              onClick={() => setPayOpen(false)}
+              disabled={submitting}
+            >
               Fechar
             </Button>
-            <Button onClick={submitRegisterPayment} disabled={submitting || !payForm.amount}>
+            <Button
+              onClick={submitRegisterPayment}
+              disabled={submitting || !payForm.amount}
+            >
               {submitting ? "Salvando..." : "Registrar"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal: confirmação de status */}
+      {/* Modal: status confirmation */}
       <Dialog open={!!confirmOpen} onOpenChange={() => setConfirmOpen(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -1364,7 +1546,11 @@ export default function FinanceiroPage() {
           </DialogHeader>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConfirmOpen(null)} disabled={submitting}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(null)}
+              disabled={submitting}
+            >
               Fechar
             </Button>
             <Button
@@ -1378,7 +1564,7 @@ export default function FinanceiroPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal: detalhes da venda */}
+      {/* Modal: Sale details */}
       <Dialog open={saleDetailsOpen} onOpenChange={setSaleDetailsOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
@@ -1391,25 +1577,31 @@ export default function FinanceiroPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="rounded-md border p-3">
                   <div className="text-sm text-muted-foreground">Cliente</div>
-                  <div className="font-medium">{(selectedSale as any).clientName || "—"}</div>
+                  <div className="font-medium">
+                    {selectedSale.clientName || "—"}
+                  </div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-sm text-muted-foreground">Status</div>
                   <div className="font-medium capitalize">
-                    {(selectedSale as any).status === SaleStatus.PAID
+                    {selectedSale.status === SaleStatus.PAID
                       ? "Pago"
-                      : (selectedSale as any).status === SaleStatus.CANCELLED
-                      ? "Cancelado"
-                      : "Pendente"}
+                      : selectedSale.status === SaleStatus.CANCELLED
+                        ? "Cancelado"
+                        : "Pendente"}
                   </div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-sm text-muted-foreground">Total</div>
-                  <div className="font-medium">{currency((selectedSale as any).totalAmount)}</div>
+                  <div className="font-medium">
+                    {currency(selectedSale.totalAmount)}
+                  </div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-sm text-muted-foreground">Saldo</div>
-                  <div className="font-medium">{currency(balance(selectedSale as any))}</div>
+                  <div className="font-medium">
+                    {currency(balance(selectedSale))}
+                  </div>
                 </div>
               </div>
 
@@ -1422,12 +1614,21 @@ export default function FinanceiroPage() {
                     <div className="col-span-2 text-right">Unitário</div>
                     <div className="col-span-2 text-right">Subtotal</div>
                   </div>
-                  {((selectedSale as any).items || []).map((it: any, idx: number) => (
-                    <div key={`item-${(selectedSale as any).id}-${idx}`} className="grid grid-cols-12 gap-0 px-3 py-2 text-sm">
-                      <div className="col-span-6 truncate">{it.serviceName} {it.serviceVariantName}</div>
+                  {(selectedSale.items || []).map((it, idx) => (
+                    <div
+                      key={`item-${selectedSale.id}-${idx}`}
+                      className="grid grid-cols-12 gap-0 px-3 py-2 text-sm"
+                    >
+                      <div className="col-span-6 truncate">
+                        {it.serviceName} {it.serviceVariantName}
+                      </div>
                       <div className="col-span-2 text-right">{it.quantity}</div>
-                      <div className="col-span-2 text-right">{currency(it.unitPrice)}</div>
-                      <div className="col-span-2 text-right">{currency(it.quantity * it.unitPrice)}</div>
+                      <div className="col-span-2 text-right">
+                        {currency(it.unitPrice)}
+                      </div>
+                      <div className="col-span-2 text-right">
+                        {currency(it.quantity * it.unitPrice)}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1443,37 +1644,51 @@ export default function FinanceiroPage() {
                     <div className="col-span-2">Método</div>
                     <div className="col-span-3">NSU / Link</div>
                   </div>
-                  {((selectedSale as any).payments || []).map((p: any) => (
-                    <div key={p.id} className="grid grid-cols-12 gap-0 px-3 py-2 text-sm">
-                      <div className="col-span-3">{new Date((p as any).created_at || (p as any).created_at || "").toLocaleString("pt-BR")}</div>
-                      <div className="col-span-2 text-right">{currency(p.amount)}</div>
+                  {(selectedSale.payments || []).map((p) => (
+                    <div
+                      key={p.id}
+                      className="grid grid-cols-12 gap-0 px-3 py-2 text-sm"
+                    >
+                      <div className="col-span-3">
+                        {new Date(p.created_at || "").toLocaleString("pt-BR")}
+                      </div>
+                      <div className="col-span-2 text-right">
+                        {currency(p.amount)}
+                      </div>
                       <div className="col-span-2">
                         <Badge
                           variant={
                             p.status === PaymentStatus.PAID
                               ? "default"
                               : p.status === PaymentStatus.PENDING
-                              ? "outline"
-                              : "secondary"
+                                ? "outline"
+                                : "secondary"
                           }
                         >
                           {p.status === PaymentStatus.PAID
                             ? "Pago"
                             : p.status === PaymentStatus.PENDING
-                            ? "Pendente"
-                            : p.status === PaymentStatus.REFUNDED
-                            ? "Estornado"
-                            : p.status === PaymentStatus.FAILED
-                            ? "Falhou"
-                            : p.status === PaymentStatus.CANCELLED
-                            ? "Cancelado"
-                            : p.status}
+                              ? "Pendente"
+                              : p.status === PaymentStatus.REFUNDED
+                                ? "Estornado"
+                                : p.status === PaymentStatus.FAILED
+                                  ? "Falhou"
+                                  : p.status === PaymentStatus.CANCELLED
+                                    ? "Cancelado"
+                                    : p.status}
                         </Badge>
                       </div>
-                      <div className="col-span-2 truncate">{p.paymentMethod || "—"}</div>
+                      <div className="col-span-2 truncate">
+                        {p.paymentMethod || "—"}
+                      </div>
                       <div className="col-span-3 truncate">
                         {p.linkUrl ? (
-                          <a className="underline" href={p.linkUrl as string} target="_blank" rel="noreferrer">
+                          <a
+                            className="underline"
+                            href={p.linkUrl as string}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             Abrir link
                           </a>
                         ) : (
@@ -1495,12 +1710,17 @@ export default function FinanceiroPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal: detalhes do pagamento (visualização simples) */}
-      <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
+      {/* Modal: payment details (simple view) */}
+      <Dialog
+        open={!!selectedPayment}
+        onOpenChange={() => setSelectedPayment(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Detalhes do pagamento</DialogTitle>
-            <DialogDescription>Informações do registro selecionado</DialogDescription>
+            <DialogDescription>
+              Informações do registro selecionado
+            </DialogDescription>
           </DialogHeader>
 
           {selectedPayment ? (
@@ -1508,41 +1728,59 @@ export default function FinanceiroPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-md border p-3">
                   <div className="text-muted-foreground">ID</div>
-                  <div className="font-medium">{(selectedPayment as any).id}</div>
+                  <div className="font-medium">{selectedPayment.id}</div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-muted-foreground">Venda</div>
-                  <div className="font-medium">{(selectedPayment as any).saleId || "—"}</div>
+                  <div className="font-medium">
+                    {selectedPayment.saleId || "—"}
+                  </div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-muted-foreground">Valor</div>
-                  <div className="font-medium">{currency((selectedPayment as any).amount)}</div>
+                  <div className="font-medium">
+                    {currency(selectedPayment.amount)}
+                  </div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-muted-foreground">Status</div>
-                  <div className="font-medium capitalize">{(selectedPayment as any).status}</div>
+                  <div className="font-medium capitalize">
+                    {selectedPayment.status}
+                  </div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-muted-foreground">Método</div>
-                  <div className="font-medium">{(selectedPayment as any).paymentMethod || "—"}</div>
+                  <div className="font-medium">
+                    {selectedPayment.paymentMethod || "—"}
+                  </div>
                 </div>
                 <div className="rounded-md border p-3">
                   <div className="text-muted-foreground">NSU</div>
-                  <div className="font-medium">{(selectedPayment as any).externalTransactionId || "—"}</div>
+                  <div className="font-medium">
+                    {selectedPayment.externalTransactionId || "—"}
+                  </div>
                 </div>
               </div>
 
               <div className="rounded-md border p-3">
                 <div className="text-muted-foreground">Criado em</div>
                 <div className="font-medium">
-                  {new Date((selectedPayment as any).created_at || (selectedPayment as any).created_at || "").toLocaleString("pt-BR")}
+                  {new Date(selectedPayment.created_at || "").toLocaleString(
+                    "pt-BR",
+                  )}
                 </div>
               </div>
 
-              {(selectedPayment as any).linkUrl ? (
+              {selectedPayment.linkUrl ? (
                 <Button
                   variant="outline"
-                  onClick={() => window.open(((selectedPayment as any).linkUrl as string), "_blank", "noopener,noreferrer")}
+                  onClick={() =>
+                    window.open(
+                      selectedPayment.linkUrl as string,
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
                 >
                   <Receipt className="h-4 w-4 mr-2" />
                   Abrir link
@@ -1559,8 +1797,11 @@ export default function FinanceiroPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal: confirmação de cancelamento de pagamento */}
-      <Dialog open={!!confirmPaymentCancelOpen} onOpenChange={() => setConfirmPaymentCancelOpen(null)}>
+      {/* Modal: payment cancellation confirmation */}
+      <Dialog
+        open={!!confirmPaymentCancelOpen}
+        onOpenChange={() => setConfirmPaymentCancelOpen(null)}
+      >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Confirmar cancelamento</DialogTitle>
@@ -1570,7 +1811,11 @@ export default function FinanceiroPage() {
           </DialogHeader>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConfirmPaymentCancelOpen(null)} disabled={submitting}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmPaymentCancelOpen(null)}
+              disabled={submitting}
+            >
               Fechar
             </Button>
             <Button
@@ -1591,7 +1836,9 @@ export default function FinanceiroPage() {
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Selecionar venda</DialogTitle>
-            <DialogDescription>Escolha a venda para continuar</DialogDescription>
+            <DialogDescription>
+              Escolha a venda para continuar
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
@@ -1606,47 +1853,60 @@ export default function FinanceiroPage() {
                 {filteredSales
                   .filter((s) => s.status !== SaleStatus.CANCELLED)
                   .filter((s) => {
-                    const q = selectQuery.trim().toLowerCase()
-                    if (!q) return true
+                    const q = selectQuery.trim().toLowerCase();
+                    if (!q) return true;
                     return (
                       (s.clientName || "").toLowerCase().includes(q) ||
-                      String((s as any).id).includes(q)
-                    )
+                      String(s.id).includes(q)
+                    );
                   })
                   .map((s) => {
-                    const paid = paidAmount(s as any)
-                    const due = balance(s as any)
+                    const paid = paidAmount(s);
+                    const due = balance(s);
                     return (
-                      <li key={(s as any).id}>
+                      <li key={s.id}>
                         <button
                           type="button"
-                          onClick={() => handlePickSaleForAction(s as any)}
+                          onClick={() => handlePickSaleForAction(s)}
                           className="w-full px-3 py-2 text-left hover:bg-muted transition"
                         >
                           <div className="flex items-center justify-between">
                             <div className="truncate">
                               <div className="font-medium truncate">
                                 {s.clientName}
-                                {s.items?.[0] ? ` — ${s.items[0].serviceName} (${s.items[0].serviceVariantName})` : ""}
+                                {s.items?.[0]
+                                  ? ` — ${s.items[0].serviceName} (${s.items[0].serviceVariantName})`
+                                  : ""}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                Total {currency((s as any).totalAmount)} • Pago {currency(paid)} • Saldo {currency(due)}
+                                Total {currency(s.totalAmount)} • Pago{" "}
+                                {currency(paid)} • Saldo {currency(due)}
                               </div>
                             </div>
-                            <Badge variant={(s as any).status === SaleStatus.PAID ? "default" : "outline"}>
-                              {(s as any).status === SaleStatus.PAID ? "Pago" : "Pendente"}
+                            <Badge
+                              variant={
+                                s.status === SaleStatus.PAID
+                                  ? "default"
+                                  : "outline"
+                              }
+                            >
+                              {s.status === SaleStatus.PAID
+                                ? "Pago"
+                                : "Pendente"}
                             </Badge>
                           </div>
                         </button>
                       </li>
-                    )
+                    );
                   })}
               </ul>
             </div>
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setSelectSaleOpen(false)}>Fechar</Button>
+            <Button variant="outline" onClick={() => setSelectSaleOpen(false)}>
+              Fechar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1658,18 +1918,20 @@ export default function FinanceiroPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nova venda</DialogTitle>
-            <DialogDescription>Cadastre o cliente e os itens da venda.</DialogDescription>
+            <DialogDescription>
+              Cadastre o cliente e os itens da venda.
+            </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4">
-            {/* Cliente */}
+            {/* Client */}
             <div className="space-y-2">
               <Label>Cliente</Label>
               <Combobox
                 placeholder="Cliente"
                 items={(clients || []).map((c) => {
-                  const phoneLabel = c.phone ? formatBrazilianPhone(c.phone) : "";
-                  const phoneDigits = c.phone ? unformatPhone(c.phone) : "";
+                  const phoneLabel = c.phone
+                    ? formatBrazilianPhone(c.phone)
+                    : "";
                   return {
                     value: c.id,
                     label: c.phone ? `${c.name} - ${phoneLabel}` : c.name,
@@ -1685,13 +1947,20 @@ export default function FinanceiroPage() {
             {/* Itens */}
             <div className="flex items-center justify-between">
               <Label className="text-base">Itens</Label>
-              <Button type="button" variant="outline" className="h-9" onClick={addItemRow}>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9"
+                onClick={addItemRow}
+              >
                 Adicionar item
               </Button>
             </div>
 
             {newSaleForm.items.length === 0 ? (
-              <Alert><AlertDescription>Nenhum item adicionado.</AlertDescription></Alert>
+              <Alert>
+                <AlertDescription>Nenhum item adicionado.</AlertDescription>
+              </Alert>
             ) : null}
 
             <div className="space-y-3">
@@ -1708,69 +1977,63 @@ export default function FinanceiroPage() {
 
                 return (
                   <div key={it.rowId} className="grid grid-cols-12 gap-3">
-                    {/* Serviço/tipo (6) */}
+                    {/* Service/type (6) */}
                     <div className="col-span-6 space-y-2">
                       <Label>Serviço/tipo</Label>
                       <Combobox
                         placeholder="Serviço/tipo"
-                        items={variants.map((v) => {
-                          const svc = services.find((s) => s.id === v.serviceId);
-                          const svcName = svc ? svc.name : "Serviço";
-                          return {
-                            value: v.id,
-                            label: `${svcName} (${v.variantName})`,
-                            hint: `R$ ${Number(v.price).toFixed(2)}`,
-                          };
-                        })}
+                        items={variantItems}
                         value={it.serviceVariantId}
-                        onChange={(vId) => {
-                          const vv = variants.find((x) => x.id === vId);
+                        onChange={(v) => {
+                          const matched = variants.find((vv) => vv.id === v);
                           onChangeItem(idx, {
-                            serviceVariantId: vId,
-                            unitPrice: vv ? Number(vv.price) : it.unitPrice,
+                            serviceVariantId: v,
+                            unitPrice: matched ? Number(matched.price) : 0,
                           });
                         }}
                       />
                     </div>
 
-                    {/* Quantidade (2) — menor que preço */}
+                    {/* Quantity (2) */}
                     <div className="col-span-2 space-y-2">
                       <Label>Qtd.</Label>
                       <Input
-                        className="h-9"
-                        inputMode="numeric"
                         type="number"
-                        min={1}
+                        min="1"
                         value={it.quantity}
-                        onChange={(e) => onChangeItem(idx, { quantity: Number(e.target.value) })}
+                        onChange={(e) =>
+                          onChangeItem(idx, {
+                            quantity: Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
 
-                    {/* Preço (4) + lixeira à direita */}
-                    <div className="col-span-4 space-y-2">
-                      <Label>Unitário (R$)</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          className="h-9"
-                          inputMode="decimal"
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={it.unitPrice}
-                          onChange={(e) => onChangeItem(idx, { unitPrice: Number(e.target.value) })}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeItemRow(idx)}
-                          aria-label="Remover item"
-                          title="Remover item"
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    {/* Unit Price (3) */}
+                    <div className="col-span-3 space-y-2">
+                      <Label>Preço</Label>
+                      <Input
+                        type="number"
+                        value={it.unitPrice}
+                        onChange={(e) =>
+                          onChangeItem(idx, {
+                            unitPrice: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Remove (1) */}
+                    <div className="col-span-1 flex items-end pb-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive h-9 w-9"
+                        onClick={() => removeItemRow(idx)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 );
@@ -1778,21 +2041,46 @@ export default function FinanceiroPage() {
             </div>
 
             {newSaleError ? (
-              <Alert><AlertDescription>{newSaleError}</AlertDescription></Alert>
+              <Alert variant="destructive">
+                <AlertDescription>{newSaleError}</AlertDescription>
+              </Alert>
             ) : null}
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setNewSaleOpen(false)} disabled={newSaleLoading}>
-              Fechar
-            </Button>
-            <Button type="button" onClick={submitNewSale} disabled={newSaleLoading}>
-              {newSaleLoading ? "Salvando..." : "Salvar venda"}
-            </Button>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <div className="hidden sm:block">
+              <div className="text-xs text-muted-foreground">
+                Total estimado
+              </div>
+              <div className="text-lg font-bold">
+                {currency(
+                  newSaleForm.items.reduce(
+                    (acc, it) => acc + it.quantity * it.unitPrice,
+                    0,
+                  ),
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none"
+                onClick={() => setNewSaleOpen(false)}
+                disabled={newSaleLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 sm:flex-none"
+                onClick={submitNewSale}
+                disabled={newSaleLoading || newSaleForm.items.length === 0}
+              >
+                {newSaleLoading ? "Salvando..." : "Salvar venda"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* ========================= */}
     </div>
-  )
+  );
 }

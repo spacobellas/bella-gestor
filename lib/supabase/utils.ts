@@ -4,8 +4,11 @@ import { PostgrestResponse } from "@supabase/supabase-js";
  * Reusable utility to fetch all records from a Supabase query with pagination.
  */
 export async function fetchAll<T>(
-  queryBuilder: (range: { from: number; to: number }) => Promise<PostgrestResponse<T>>,
-  pageSize = 1000
+  queryBuilder: (range: {
+    from: number;
+    to: number;
+  }) => Promise<PostgrestResponse<T>>,
+  pageSize = 1000,
 ): Promise<T[]> {
   const allData: T[] = [];
   let pageNumber = 0;

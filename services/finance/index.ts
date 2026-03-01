@@ -12,7 +12,8 @@ export async function getSales(): Promise<Sale[]> {
 
     const { data, error } = await supabase
       .from("sales")
-      .select(`
+      .select(
+        `
         *,
         clients (full_name),
         sale_items (
@@ -23,7 +24,8 @@ export async function getSales(): Promise<Sale[]> {
           )
         ),
         payments (*)
-      `)
+      `,
+      )
       .gte("created_at", sixMonthsAgo.toISOString())
       .order("created_at", { ascending: false });
 
@@ -72,11 +74,15 @@ export async function getSales(): Promise<Sale[]> {
 /**
  * Fetches payments within a date range.
  */
-export async function getPayments(startDate?: string, endDate?: string): Promise<Payment[]> {
+export async function getPayments(
+  startDate?: string,
+  endDate?: string,
+): Promise<Payment[]> {
   try {
     let query = supabase
       .from("payments")
-      .select(`
+      .select(
+        `
         *,
         sales (
           client_id,
@@ -89,7 +95,8 @@ export async function getPayments(startDate?: string, endDate?: string): Promise
             )
           )
         )
-      `)
+      `,
+      )
       .order("created_at", { ascending: false });
 
     if (startDate) query = query.gte("created_at", startDate);

@@ -1,4 +1,9 @@
-import { AppRole, AppointmentStatus, SaleStatus, PaymentStatus } from "./domain";
+import {
+  AppRole,
+  AppointmentStatus,
+  SaleStatus,
+  PaymentStatus,
+} from "./domain";
 
 /**
  * Raw Supabase schema interfaces (Snake Case)

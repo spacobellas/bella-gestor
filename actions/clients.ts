@@ -10,12 +10,12 @@ import { Client } from "@/types";
  * Creates a new client.
  */
 export async function createClientAction(
-  client: Omit<Client, "id" | "registrationDate" | "status">
+  client: Omit<Client, "id" | "registrationDate" | "status">,
 ) {
   try {
     const supabase = getSupabaseServer();
     const payload = clientToSupabaseClient(client);
-    
+
     const { data, error } = await supabase
       .from("clients")
       .insert([payload])

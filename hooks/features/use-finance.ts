@@ -2,15 +2,12 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { 
-  getSales, 
-  getPayments 
-} from "@/services/finance";
-import { 
-  createSaleAction, 
-  updateSaleStatusAction, 
-  createPaymentAction, 
-  updatePaymentStatusAction 
+import { getSales, getPayments } from "@/services/finance";
+import {
+  createSaleAction,
+  updateSaleStatusAction,
+  createPaymentAction,
+  updatePaymentStatusAction,
 } from "@/actions/finance";
 import { Sale, SaleStatus, Payment, PaymentStatus } from "@/types";
 
@@ -28,7 +25,7 @@ export function useFinance() {
     try {
       const [salesData, paymentsData] = await Promise.all([
         getSales(),
-        getPayments()
+        getPayments(),
       ]);
       setSales(salesData);
       setPayments(paymentsData);
@@ -58,7 +55,11 @@ export function useFinance() {
     return (await promise).data;
   };
 
-  const updateSaleStatus = async (id: string, status: SaleStatus, updates?: Partial<Sale>) => {
+  const updateSaleStatus = async (
+    id: string,
+    status: SaleStatus,
+    updates?: Partial<Sale>,
+  ) => {
     const promise = updateSaleStatusAction(id, status, updates);
     toast.promise(promise, {
       loading: "Atualizando status da venda...",

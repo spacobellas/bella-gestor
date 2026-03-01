@@ -6,16 +6,20 @@ import { DataProvider } from "@/lib/data-context";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export default function PublicAgendaLayout({ children }: { children: React.ReactNode }) {
+export default function PublicAgendaLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [checking, setChecking] = useState(true);
   const [granted, setGranted] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // tenta checar o cookie já existente
+    // Attempts to check for existing cookie
     fetch("/api/pro-access", { method: "GET", credentials: "include" })
-      .then((r) => r.ok ? setGranted(true) : setGranted(false))
+      .then((r) => (r.ok ? setGranted(true) : setGranted(false)))
       .catch(() => setGranted(false))
       .finally(() => setChecking(false));
   }, []);
@@ -45,17 +49,25 @@ export default function PublicAgendaLayout({ children }: { children: React.React
         <form onSubmit={handleEnter} className="w-full max-w-sm space-y-3">
           <div className="text-center space-y-1">
             <h1 className="text-xl font-semibold">Acesso de Profissionais</h1>
-            <p className="text-sm text-muted-foreground">Informe a palavra‑chave</p>
+            <p className="text-sm text-muted-foreground">
+              Informe a palavra‑chave
+            </p>
           </div>
-          <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Palavra‑chave" />
+          <Input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Palavra‑chave"
+          />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <Button type="submit" className="w-full">Entrar</Button>
+          <Button type="submit" className="w-full">
+            Entrar
+          </Button>
         </form>
       </div>
     );
   }
 
-  // Modo 'public' => DataProvider ignora login e usa API pública (service role no servidor)
+  // 'public' mode: DataProvider bypasses login and uses the public API (server-side service role)
   return (
     <div className="min-h-screen">
       <DataProvider mode="public">{children}</DataProvider>
