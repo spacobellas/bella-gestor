@@ -248,8 +248,8 @@ export default function AgendaPage() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               className="h-9"
               onClick={() => setCurrentDate(new Date())}

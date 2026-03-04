@@ -116,7 +116,8 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-8">
-          Spaço Bellas © 2025 - {new Date().getFullYear()} • Todos os direitos reservados
+          Spaço Bellas © 2025 - {new Date().getFullYear()} • Todos os direitos
+          reservados
         </p>
       </div>
     </div>
