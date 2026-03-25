@@ -59,7 +59,7 @@ The project follows a clean, layered architecture for maximum maintainability:
 ├── app/              # Next.js App Router (Routes and Pages)
 ├── components/       # UI Library and Feature-specific components
 │   ├── features/     # Complex business logic components
-│   └── ui/           # Atomic, reusable Radix-based components
+│   └── ui/           # Atomic, reusable shadcn/ui-based components
 ├── hooks/            # Custom React hooks (Data fetching & Logic)
 ├── lib/              # Core configurations (Supabase, Contexts)
 ├── services/         # External API integrations (Google, Payments)
@@ -74,7 +74,7 @@ The project follows a clean, layered architecture for maximum maintainability:
 - Node.js (Latest LTS)
 - pnpm (Recommended)
 - Supabase Project
-- Google Cloud Console credentials (for Calendar integration)
+- Google Apps Script (for Calendar integration)
 
 ### Installation
 
