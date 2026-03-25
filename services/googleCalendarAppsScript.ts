@@ -1,18 +1,12 @@
-const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || "";
-
 export async function createCalendarEvent(eventData: any) {
   try {
-    if (!APPS_SCRIPT_URL) {
-      throw new Error("NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL não configurada");
-    }
-
-    const params = new URLSearchParams({
-      action: "create",
-      eventData: JSON.stringify(eventData),
-    });
-
-    const response = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
-      method: "GET",
+    const response = await fetch("/api/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "create",
+        eventData: JSON.stringify(eventData),
+      }),
     });
 
     if (!response.ok) {
@@ -28,18 +22,14 @@ export async function createCalendarEvent(eventData: any) {
 
 export async function updateCalendarEvent(eventId: string, eventData: any) {
   try {
-    if (!APPS_SCRIPT_URL) {
-      throw new Error("NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL não configurada");
-    }
-
-    const params = new URLSearchParams({
-      action: "update",
-      eventId,
-      eventData: JSON.stringify(eventData),
-    });
-
-    const response = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
-      method: "GET",
+    const response = await fetch("/api/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update",
+        eventId,
+        eventData: JSON.stringify(eventData),
+      }),
     });
 
     if (!response.ok) {
@@ -55,17 +45,10 @@ export async function updateCalendarEvent(eventId: string, eventData: any) {
 
 export async function deleteCalendarEvent(eventId: string) {
   try {
-    if (!APPS_SCRIPT_URL) {
-      throw new Error("NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL não configurada");
-    }
-
-    const params = new URLSearchParams({
-      action: "delete",
-      eventId,
-    });
-
-    const response = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
-      method: "GET",
+    const response = await fetch("/api/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", eventId }),
     });
 
     if (!response.ok) {
@@ -81,19 +64,16 @@ export async function deleteCalendarEvent(eventId: string) {
 
 export async function listCalendarEvents(timeMin?: string, timeMax?: string) {
   try {
-    if (!APPS_SCRIPT_URL) {
-      throw new Error("NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL não configurada");
-    }
-
-    const params = new URLSearchParams({
+    const payload: any = {
       action: "list",
       timeMin: timeMin || new Date().toISOString(),
-    });
+    };
+    if (timeMax) payload.timeMax = timeMax;
 
-    if (timeMax) params.append("timeMax", timeMax);
-
-    const response = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
-      method: "GET",
+    const response = await fetch("/api/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
