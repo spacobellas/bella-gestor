@@ -381,10 +381,17 @@ export function ClientModal({
                       <SelectValue placeholder="Selecione uma opção" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Empresa">Empresa</SelectItem>
-                      <SelectItem value="Condomínio">Condomínio</SelectItem>
-                      <SelectItem value="Escola">Escola</SelectItem>
-                      <SelectItem value="Outros">Outros</SelectItem>
+                        <SelectItem value="Instagram">Instagram</SelectItem>
+                        <SelectItem value="Profissional Bellas">Profissional Bellas</SelectItem>
+                        <SelectItem value="Igreja">Igreja</SelectItem>
+                        <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                        <SelectItem value="Google">Google</SelectItem>
+                        <SelectItem value="Indicação Cliente">Indicação Cliente</SelectItem>
+                        <SelectItem value="Fachada">Fachada</SelectItem>
+                        <SelectItem value="Parceria Empresa/Condomínio">Parceria Empresa/Condomínio</SelectItem>
+                        <SelectItem value="Evento/Ação">Evento/Ação</SelectItem>
+                        <SelectItem value="TV">TV</SelectItem>
+                        <SelectItem value="Outro">Outro</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -439,15 +446,17 @@ export function ClientModal({
                       <SelectValue placeholder="Selecione uma opção" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Orgânico Instagram">
-                        Orgânico Instagram
-                      </SelectItem>
-                      <SelectItem value="Tráfego Instagram">
-                        Tráfego Instagram
-                      </SelectItem>
-                      <SelectItem value="Tv Barueri">Tv Barueri</SelectItem>
-                      <SelectItem value="Fachada">Fachada</SelectItem>
-                      <SelectItem value="Indicação">Indicação</SelectItem>
+                          <SelectItem value="Viu conteúdo e se interessou">Viu conteúdo e se interessou</SelectItem>
+                          <SelectItem value="Clicou em anúncio">Clicou em anúncio</SelectItem>
+                          <SelectItem value="Recebeu indicação direta">Recebeu indicação direta</SelectItem>
+                          <SelectItem value="Foi convidada por profissional">Foi convidada por profissional</SelectItem>
+                          <SelectItem value="Participou de evento">Participou de evento</SelectItem>
+                          <SelectItem value="Já conhecia a marca">Já conhecia a marca</SelectItem>
+                          <SelectItem value="Passou em frente e entrou">Passou em frente e entrou</SelectItem>
+                          <SelectItem value="Procurou no Google">Procurou no Google</SelectItem>
+                          <SelectItem value="Recebeu mensagem/oferta">Recebeu mensagem/oferta</SelectItem>
+                          <SelectItem value="Ganhou presente/voucher">Ganhou presente/voucher</SelectItem>
+                          <SelectItem value="Outro">Outro</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
