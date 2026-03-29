@@ -51,3 +51,5 @@ export async function getProfessionals(): Promise<Professional[]> {
   if (!r.ok) throw new Error("Falha ao carregar profissionais");
   return (await r.json()) as Professional[];
 }
+
+export const getServices = getActiveServices;
