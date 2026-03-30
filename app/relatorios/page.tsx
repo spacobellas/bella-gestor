@@ -9,7 +9,6 @@ import { useData } from "@/lib/data-context";
 import { formatCurrency } from "@/lib/utils";
 import {
   computeFinancialMetrics,
-  todayInSaoPaulo,
   type DateRangeFilter,
   type PeriodMetrics,
 } from "@/lib/utils/financial-metrics";
@@ -30,7 +29,6 @@ import {
   Activity,
   Star,
   RefreshCw,
-  Clock,
   CalendarRange,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -93,13 +91,20 @@ export default function RelatoriosPage() {
   } = useData();
 
   // ── Filter state ──────────────────────────────────────────────────────────
-  const [filterMode, setFilterMode] = useState<"past" | "future" | "custom">("past");
+  const [filterMode] = useState<"past" | "future" | "custom">("custom");
+  const [overviewMode, setOverviewMode] = useState<"past" | "future">("past");
+  const [showFilters, setShowFilters] = useState(false);
+  
   const [customStart, setCustomStart] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
     return d.toISOString().slice(0, 10);
   });
-  const [customEnd, setCustomEnd] = useState<string>(todayInSaoPaulo);
+  const [customEnd, setCustomEnd] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
 
   // Derived filter object consumed by computeFinancialMetrics
   const activeFilter = useMemo<DateRangeFilter>(() => {
@@ -195,37 +200,19 @@ export default function RelatoriosPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Mode selector */}
-          <div className="inline-flex overflow-hidden rounded-lg border text-sm bg-card shadow-sm">
-            {(["past", "future", "custom"] as const).map((mode) => {
-              const labels = {
-                past: "Histórico",
-                future: "Projeção",
-                custom: "Personalizado",
-              };
-              const icons = {
-                past: <Clock className="h-3.5 w-3.5 mr-1.5" />,
-                future: <TrendingUp className="h-3.5 w-3.5 mr-1.5" />,
-                custom: <CalendarRange className="h-3.5 w-3.5 mr-1.5" />,
-              };
-              return (
-                <Button
-                  key={mode}
-                  variant={filterMode === mode ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setFilterMode(mode)}
-                  className="rounded-none h-9 px-3"
-                >
-                  {icons[mode]}
-                  {labels[mode]}
-                </Button>
-              );
-            })}
-          </div>
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="h-9 shadow-sm"
+          >
+            <CalendarRange className="h-4 w-4 mr-2" />
+            Filtrar
+          </Button>
 
-          {/* Custom date pickers — only visible in custom mode */}
-          {filterMode === "custom" && (
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* Custom date pickers — visible when showFilters is true */}
+          {showFilters && (
+            <div className="flex items-center gap-2 flex-wrap animate-in fade-in slide-in-from-right-1">
               <div className="flex items-center gap-1.5">
                 <Label className="text-xs text-muted-foreground whitespace-nowrap">
                   De
@@ -307,28 +294,49 @@ export default function RelatoriosPage() {
         </div>
 
         <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+          <div className="flex justify-end">
+            <div className="inline-flex rounded-lg border p-1 bg-muted/50 shadow-sm">
+              <Button
+                variant={overviewMode === "past" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setOverviewMode("past")}
+                className="h-8 px-4 text-xs font-semibold transition-all"
+              >
+                Histórico
+              </Button>
+              <Button
+                variant={overviewMode === "future" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setOverviewMode("future")}
+                className="h-8 px-4 text-xs font-semibold transition-all"
+              >
+                Projeção
+              </Button>
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              title={filterMode === "past" ? "Receita Realizada" : "Receita Total"}
+              title={overviewMode === "past" ? "Receita Realizada" : "Receita Total (Proj.)"}
               value={formatCurrency(
-                filterMode === "past" ? metrics.actualRevenue : metrics.totalRevenue,
+                overviewMode === "past" ? metrics.actualRevenue : metrics.totalRevenue,
               )}
               subtitle={getPeriodLabel()}
               icon={<DollarSign className="h-full w-full" />}
             />
             <StatCard
-              title="Receita Líquida"
+              title={overviewMode === "past" ? "Receita Líquida" : "Receita Líquida Proj."}
               value={formatCurrency(
-                filterMode === "past" ? metrics.netRevenue : metrics.projectedNetRevenue
+                overviewMode === "past" ? metrics.netRevenue : metrics.projectedNetRevenue
               )}
               subtitle={
-                filterMode === "past" 
+                overviewMode === "past" 
                   ? `Margem: ${metrics.netMarginPercentage.toFixed(1)}%`
                   : `Margem Projetada: ${metrics.projectedNetMarginPercentage.toFixed(1)}%`
               }
               icon={<PiggyBank className="h-full w-full" />}
             />
-            {filterMode === "past" ? (
+            {overviewMode === "past" ? (
               <StatCard
                 title="Ticket Médio"
                 value={formatCurrency(metrics.avgTicket)}
@@ -344,15 +352,15 @@ export default function RelatoriosPage() {
               />
             )}
             <StatCard
-              title={filterMode === "future" ? "Agendamentos" : "Vendas"}
+              title={overviewMode === "future" ? "Agendamentos" : "Vendas"}
               value={
-                filterMode === "future"
+                overviewMode === "future"
                   ? metrics.projectedAppointments.length.toString()
                   : metrics.salesCount.toString()
               }
               subtitle={
-                filterMode === "future"
-                  ? formatCurrency(metrics.projectedAppointmentsValue)
+                overviewMode === "future"
+                  ? `Val: ${formatCurrency(metrics.projectedAppointmentsValue)}`
                   : `${metrics.cancelledSalesCount} canceladas`
               }
               icon={<Calendar className="h-full w-full" />}
@@ -440,133 +448,117 @@ export default function RelatoriosPage() {
         </TabsContent>
 
         <TabsContent value="projection" className="space-y-4 sm:space-y-6">
-          {filterMode === "past" ? (
-            <Card className="p-8 flex flex-col items-center gap-3 text-center">
-              <TrendingUp className="h-10 w-10 text-muted-foreground opacity-30" />
-              <p className="text-muted-foreground text-sm">
-                Mude para o modo &quot;Projeção&quot; ou &quot;Personalizado&quot; para ver dados futuros.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setFilterMode("future")}
-              >
-                Ver Projeção
-              </Button>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {/* Accounts Receivable from Pending Sales */}
-              <Card className="p-4 sm:p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2 text-base sm:text-lg">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  Vendas Pendentes (A Receber)
-                  <Badge variant="outline">
-                    {(sales || []).filter(s => s.status === "pending").length}
-                  </Badge>
-                </h3>
-                {metrics.pendingSalesValue === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhuma venda pendente com saldo em aberto.
-                  </p>
-                ) : (
-                  <div className="divide-y rounded-md border overflow-hidden">
-                    {(sales || [])
-                      .filter((s) => s.status === "pending")
-                      .map((s) => {
-                        const total = Number(s.totalAmount) || 0;
-                        const paid = (s.payments || []).reduce((pSum, p) => {
-                          return p.status === "paid" ? pSum + (Number(p.amount) || 0) : pSum;
-                        }, 0);
-                        const balance = Math.max(0, total - paid);
-                        
-                        if (balance === 0) return null;
+          <div className="space-y-4">
+            {/* Accounts Receivable from Pending Sales */}
+            <Card className="p-4 sm:p-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2 text-base sm:text-lg">
+                <CreditCard className="h-5 w-5 text-primary" />
+                Vendas Pendentes (A Receber)
+                <Badge variant="outline">
+                  {(sales || []).filter(s => s.status === "pending").length}
+                </Badge>
+              </h3>
+              {metrics.pendingSalesValue === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma venda pendente com saldo em aberto.
+                </p>
+              ) : (
+                <div className="divide-y rounded-md border overflow-hidden">
+                  {(sales || [])
+                    .filter((s) => s.status === "pending")
+                    .map((s) => {
+                      const total = Number(s.totalAmount) || 0;
+                      const paid = (s.payments || []).reduce((pSum, p) => {
+                        return p.status === "paid" ? pSum + (Number(p.amount) || 0) : pSum;
+                      }, 0);
+                      const balance = Math.max(0, total - paid);
+                      
+                      if (balance === 0) return null;
 
-                        return (
-                          <div
-                            key={s.id}
-                            className="flex items-center justify-between px-4 py-3 text-sm"
-                          >
-                            <div>
-                              <p className="font-medium">
-                                {s.clientName || "Cliente"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {s.items?.map(i => i.serviceName).join(", ") || "Serviço"} • 
-                                Criada em {new Date(s.created_at).toLocaleDateString("pt-BR")}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold">{formatCurrency(balance)}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                de {formatCurrency(total)}
-                              </p>
-                            </div>
+                      return (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between px-4 py-3 text-sm"
+                        >
+                          <div>
+                            <p className="font-medium">
+                              {s.clientName || "Cliente"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {s.items?.map(i => i.serviceName).join(", ") || "Serviço"} • 
+                              Criada em {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                            </p>
                           </div>
-                        );
-                      })
-                      .filter(Boolean)}
-                  </div>
-                )}
-              </Card>
-
-              {/* Projected appointments */}
-              <Card className="p-4 sm:p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2 text-base sm:text-lg">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Agendamentos sem Venda Vinculada
-                  <Badge variant="outline">
-                    {metrics.projectedAppointments.length}
-                  </Badge>
-                </h3>
-                {metrics.projectedAppointments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum agendamento futuro sem venda vinculada no período.
-                  </p>
-                ) : (
-                  <div className="divide-y rounded-md border overflow-hidden">
-                    {metrics.projectedAppointments.map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex items-center justify-between px-4 py-3 text-sm"
-                      >
-                        <div>
-                          <p className="font-medium">{a.clientName || "Cliente"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(a.startTime).toLocaleString("pt-BR", {
-                              dateStyle: "short",
-                              timeStyle: "short",
-                            })}
-                            {" • "}
-                            {a.serviceVariants.map((sv) => sv.serviceVariantName).join(", ")}
-                          </p>
+                          <div className="text-right">
+                            <p className="font-bold">{formatCurrency(balance)}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              de {formatCurrency(total)}
+                            </p>
+                          </div>
                         </div>
-                        <span className="font-bold">
-                          {formatCurrency(a.totalPrice)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-6 space-y-2 pt-4 border-t">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Agendamentos Projetados</span>
-                    <span>{formatCurrency(metrics.projectedAppointmentsValue)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Saldo de Vendas Pendentes (A Receber)</span>
-                    <span>{formatCurrency(metrics.pendingSalesValue)}</span>
-                  </div>
-                  <div className="flex justify-between text-base font-bold pt-2 border-t">
-                    <span>Total Projetado no Período</span>
-                    <span className="text-primary">
-                      {formatCurrency(metrics.projectedRevenue)}
-                    </span>
-                  </div>
+                      );
+                    })
+                    .filter(Boolean)}
                 </div>
-              </Card>
-            </div>
-          )}
+              )}
+            </Card>
+
+            {/* Projected appointments */}
+            <Card className="p-4 sm:p-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2 text-base sm:text-lg">
+                <Calendar className="h-5 w-5 text-primary" />
+                Agendamentos sem Venda Vinculada
+                <Badge variant="outline">
+                  {metrics.projectedAppointments.length}
+                </Badge>
+              </h3>
+              {metrics.projectedAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum agendamento futuro sem venda vinculada no período.
+                </p>
+              ) : (
+                <div className="divide-y rounded-md border overflow-hidden">
+                  {metrics.projectedAppointments.map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex items-center justify-between px-4 py-3 text-sm"
+                    >
+                      <div>
+                        <p className="font-medium">{a.clientName || "Cliente"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(a.startTime).toLocaleString("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })}
+                          {" • "}
+                          {a.serviceVariants.map((sv) => sv.serviceVariantName).join(", ")}
+                        </p>
+                      </div>
+                      <span className="font-bold">
+                        {formatCurrency(a.totalPrice)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-6 space-y-2 pt-4 border-t">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Agendamentos Projetados</span>
+                  <span>{formatCurrency(metrics.projectedAppointmentsValue)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Saldo de Vendas Pendentes (A Receber)</span>
+                  <span>{formatCurrency(metrics.pendingSalesValue)}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold pt-2 border-t">
+                  <span>Total Projetado no Período</span>
+                  <span className="text-primary">
+                    {formatCurrency(metrics.projectedRevenue)}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="financial" className="space-y-4 sm:space-y-6">
