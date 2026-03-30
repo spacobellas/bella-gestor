@@ -167,8 +167,9 @@ export function computeFinancialMetrics(
 
   const actualRevenue = paidPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  // Calculate Accounts Receivable from Pending Sales
-  const pendingSalesValue = filteredSales.reduce((acc, sale) => {
+  // FIX: Decouple Pending Sales from Time Filters
+  // We use the RAW 'sales' array to ensure past pending sales are included in future projections
+  const pendingSalesValue = sales.reduce((acc, sale) => {
     if (sale.status !== SaleStatus.PENDING) return acc;
     const total = Number(sale.totalAmount) || 0;
     const paid = (sale.payments || []).reduce((pSum, p) => {
