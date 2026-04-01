@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from "@/services/googleCalendarAppsScript";
 import { useData } from "@/lib/data-context";
-import type { Appointment } from "@/types";
+import type { Appointment, Professional } from "@/types";
 import { AppointmentStatus } from "@/types";
 
 import { CalendarView } from "@/components/features/agenda/calendar-view";
@@ -21,6 +21,14 @@ interface GoogleCalendarEvent {
   description?: string;
   start: { dateTime: string };
   end: { dateTime: string };
+  attendees?: Array<{ email: string }>;
+}
+
+function professionalDisplay(p: Professional) {
+  const name = p.name ?? (p as { fullName?: string }).fullName;
+  return name && p.functionTitle
+    ? `${name} (${p.functionTitle})`
+    : p.email ?? "Sem e-mail";
 }
 
 export default function AgendaPage() {
@@ -30,6 +38,7 @@ export default function AgendaPage() {
     professionals,
     isLoading: dataLoading,
     refreshData,
+    addAppointment,
   } = useData();
   const [appointments, setAppointments] = useState<GoogleCalendarEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
@@ -41,6 +50,7 @@ export default function AgendaPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterClientId, setFilterClientId] = useState("");
   const [filterServiceId, setFilterServiceId] = useState("");
+  const [filterProfessionalId, setFilterProfessionalId] = useState("");
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,9 +71,13 @@ export default function AgendaPage() {
       const end = new Date(start);
       end.setDate(end.getDate() + 7);
 
+      const professional = professionals.find((p) => p.id === filterProfessionalId);
+      const query = professional?.email ? professional.email : undefined;
+
       const resp = await listCalendarEvents(
         start.toISOString(),
         end.toISOString(),
+        query
       );
       if (resp?.success) {
         setAppointments(resp.events || []);
@@ -75,7 +89,7 @@ export default function AgendaPage() {
     } finally {
       setIsLoadingEvents(false);
     }
-  }, [currentDate]);
+  }, [currentDate, filterProfessionalId, professionals]);
 
   useEffect(() => {
     fetchEvents();
@@ -101,15 +115,25 @@ export default function AgendaPage() {
       const matchService =
         !filterServiceId || desc.includes(`serviço: ${serviceName}`);
 
-      return matchSearch && matchClient && matchService;
+      const professional = professionals.find((p) => p.id === filterProfessionalId);
+      const matchProfessional = !filterProfessionalId || (
+        professional && (
+          (ev.attendees || []).some((a) => a.email.toLowerCase() === professional.email?.toLowerCase()) ||
+          desc.includes(`profissional: ${professional.name?.toLowerCase()}`)
+        )
+      );
+
+      return matchSearch && matchClient && matchService && matchProfessional;
     });
   }, [
     appointments,
     searchQuery,
     filterClientId,
     filterServiceId,
+    filterProfessionalId,
     clients,
     services,
+    professionals,
   ]);
 
   const handleSave = async (values: {
@@ -174,7 +198,9 @@ export default function AgendaPage() {
             ],
             totalPrice: variant?.price || 0,
           };
-          await addAppointment(supabasePayload);
+          if (addAppointment) {
+            await addAppointment(supabasePayload);
+          }
         }
       }
 
@@ -220,7 +246,7 @@ export default function AgendaPage() {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="relative sm:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -242,12 +268,19 @@ export default function AgendaPage() {
               value={filterServiceId}
               onChange={setFilterServiceId}
             />
+            <Combobox
+              placeholder="Filtrar Profissional"
+              items={professionals.map((p) => ({ value: p.id, label: professionalDisplay(p) }))}
+              value={filterProfessionalId}
+              onChange={setFilterProfessionalId}
+            />
             <Button
               variant="outline"
               onClick={() => {
                 setSearchQuery("");
                 setFilterClientId("");
                 setFilterServiceId("");
+                setFilterProfessionalId("");
               }}
             >
               Limpar Filtros
