@@ -43,11 +43,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { formatBrazilianPhone, unformatPhone } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarView } from "@/components/features/agenda/calendar-view";
 import { Card, CardContent } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { ptBR } from "date-fns/locale";
 
 // ─── Reusable Combobox ────────────────────────────────────────────────────────
 function CustomCombobox({
@@ -447,32 +450,35 @@ export default function CreateAppointmentPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Crie um novo agendamento ou visualize os agendamentos existentes.
+    <div className="flex flex-col items-center justify-center min-h-screen gap-8 p-6 bg-gradient-to-b from-background to-muted/20">
+      <div className="text-center space-y-4 max-w-2xl px-4">
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-primary">
+          Agendamentos
+        </h1>
+        <p className="text-lg sm:text-xl text-muted-foreground">
+          Crie um novo agendamento ou visualize os agendamentos existentes no
+          Spaço Bellas.
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md px-4">
         <Button
           size="lg"
           onClick={() => setFormOpen(true)}
-          className="flex-1 h-12 text-base shadow-lg"
+          className="w-full sm:flex-1 h-16 text-lg font-semibold shadow-xl hover:scale-105 transition-transform"
         >
-          <CalendarPlus className="mr-2 h-5 w-5" />
-          Criar Agendamento
+          <CalendarPlus className="mr-3 h-6 w-6" />
+          Novo Agendamento
         </Button>
 
         <Button
           size="lg"
           variant="outline"
           onClick={() => setViewChoiceOpen(true)}
-          className="flex-1 h-12 text-base"
+          className="w-full sm:flex-1 h-16 text-lg font-semibold shadow-md hover:bg-muted transition-colors"
         >
-          <CalendarSearch className="mr-2 h-5 w-5" />
-          Ver Agendamentos
+          <CalendarSearch className="mr-3 h-6 w-6" />
+          Ver Agenda
         </Button>
       </div>
 
@@ -571,11 +577,33 @@ export default function CreateAppointmentPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 flex-1"
+                      className="h-10 px-4"
                       onClick={() => setCurrentDate(new Date())}
                     >
                       Hoje
                     </Button>
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-10 w-10"
+                        >
+                          <CalendarIcon className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={currentDate}
+                          onSelect={(date) => date && setCurrentDate(date)}
+                          locale={ptBR}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+
                     <Button
                       variant="outline"
                       size="icon"

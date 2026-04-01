@@ -30,6 +30,7 @@ import {
   updateClientAction,
   deactivateClientAction,
   reactivateClientAction,
+  deleteClientAction,
 } from "@/actions/clients";
 import {
   createAppointmentAction,
@@ -103,6 +104,7 @@ interface DataContextType {
   updateClient: (id: string, client: Partial<Client>) => Promise<Client | null>;
   deactivateClient: (id: string) => Promise<boolean>;
   reactivateClient: (id: string) => Promise<boolean>;
+  deleteClient: (id: string) => Promise<boolean>;
   getInactiveClients: () => Promise<Client[]>;
   searchClients: (query: string) => Promise<Client[]>;
 
@@ -504,6 +506,31 @@ export function DataProvider({
       setError(msg);
       toast({
         title: "Erro ao reativar cliente",
+        description: msg,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const deleteClient = async (id: string): Promise<boolean> => {
+    try {
+      const res = await deleteClientAction(id);
+      if (!res.success) throw new Error(res.error);
+      await refreshData();
+      toast({
+        title: "Cliente excluído",
+        description: "O cliente foi excluído permanentemente.",
+      });
+      return true;
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível excluir o cliente.";
+      setError(msg);
+      toast({
+        title: "Erro ao excluir cliente",
         description: msg,
         variant: "destructive",
       });
@@ -979,6 +1006,7 @@ export function DataProvider({
     updateClient,
     deactivateClient,
     reactivateClient,
+    deleteClient,
     getInactiveClients,
     searchClients,
 

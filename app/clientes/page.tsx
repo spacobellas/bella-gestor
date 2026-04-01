@@ -19,6 +19,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useData } from "@/lib/data-context";
 import { ClientList } from "@/components/features/clients/client-list";
 import { ClientModal } from "@/components/modals/client-modal";
+import { InactiveClientsModal } from "@/components/modals/inactive-clients-modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { Client } from "@/types";
 import {
@@ -28,6 +29,7 @@ import {
   Loader2,
   LayoutList,
   LayoutGrid,
+  Users,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -43,6 +45,7 @@ export default function ClientesPage() {
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
+  const [inactiveModalOpen, setInactiveModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit" | "view">(
     "create",
   );
@@ -132,7 +135,22 @@ export default function ClientesPage() {
             title="Clientes"
             description="Gerencie sua base de clientes"
             actions={
-              <>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setInactiveModalOpen(true)}
+                  className="hidden md:flex"
+                >
+                  Ver Clientes Desativados
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="md:hidden"
+                  onClick={() => setInactiveModalOpen(true)}
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="outline"
                   size="icon"
@@ -152,7 +170,7 @@ export default function ClientesPage() {
                 >
                   <Plus className="mr-2 h-4 w-4" /> Novo Cliente
                 </Button>
-              </>
+              </div>
             }
           />
 
@@ -285,6 +303,16 @@ export default function ClientesPage() {
         onOpenChange={setModalOpen}
         mode={modalMode}
         client={selectedClient}
+      />
+
+      <InactiveClientsModal
+        open={inactiveModalOpen}
+        onOpenChange={setInactiveModalOpen}
+        onViewClient={(c) => {
+          setSelectedClient(c);
+          setModalMode("view");
+          setModalOpen(true);
+        }}
       />
 
       <AlertDialog

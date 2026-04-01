@@ -18,8 +18,21 @@ import { AppointmentFormModal } from "@/components/features/agenda/appointment-f
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Search,
+  Calendar as CalendarIcon,
+} from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ptBR } from "date-fns/locale";
 
 interface GoogleCalendarEvent {
   id: string;
@@ -321,11 +334,29 @@ export default function AgendaPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9"
+              className="h-9 px-3"
               onClick={() => setCurrentDate(new Date())}
             >
               Hoje
             </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <CalendarIcon className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={currentDate}
+                  onSelect={(date) => date && setCurrentDate(date)}
+                  locale={ptBR}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
             <Button
               variant="outline"
               size="icon"
