@@ -75,6 +75,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
@@ -332,26 +333,22 @@ export default function ClientesInativosPage() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para Clientes Ativos
           </Button>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Clientes Inativos
-              </h1>
-              <p className="text-base text-muted-foreground mt-1">
-                Clientes que foram desativados e podem ser reativados
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => refreshData()}
-              disabled={isLoading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-              />
-            </Button>
-          </div>
+          <PageHeader
+            title="Clientes Inativos"
+            description="Clientes que foram desativados e podem ser reativados"
+            actions={
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refreshData()}
+                disabled={isLoading}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
+              </Button>
+            }
+          />
 
           <Card className="p-4 md:p-6">
             <div className="space-y-4">

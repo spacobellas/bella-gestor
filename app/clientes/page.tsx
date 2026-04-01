@@ -19,6 +19,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useData } from "@/lib/data-context";
 import { ClientList } from "@/components/features/clients/client-list";
 import { ClientModal } from "@/components/modals/client-modal";
+import { PageHeader } from "@/components/layout/page-header";
 import { Client } from "@/types";
 import {
   Search,
@@ -127,35 +128,33 @@ export default function ClientesPage() {
     <TooltipProvider>
       <div className="flex flex-col h-screen overflow-hidden">
         <div className="p-4 md:p-6 space-y-4 flex-none">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-              <p className="text-muted-foreground">
-                Gerencie sua base de clientes
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => refreshData()}
-                disabled={isLoading}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-                />
-              </Button>
-              <Button
-                onClick={() => {
-                  setSelectedClient(null);
-                  setModalMode("create");
-                  setModalOpen(true);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" /> Novo Cliente
-              </Button>
-            </div>
-          </div>
+          <PageHeader
+            title="Clientes"
+            description="Gerencie sua base de clientes"
+            actions={
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => refreshData()}
+                  disabled={isLoading}
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSelectedClient(null);
+                    setModalMode("create");
+                    setModalOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Novo Cliente
+                </Button>
+              </>
+            }
+          />
 
           <Card className="p-4">
             <div className="flex flex-col sm:flex-row gap-3">

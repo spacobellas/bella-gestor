@@ -87,7 +87,9 @@ export default function PublicAgendaLayout({
   // 'public' mode: DataProvider bypasses login and uses the public API (server-side service role)
   return (
     <div className="min-h-screen">
-      <DataProvider mode="public" skip={!granted}>{children}</DataProvider>
+      <DataProvider mode="public" skip={!granted}>
+        {children}
+      </DataProvider>
     </div>
   );
 }

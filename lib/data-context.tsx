@@ -825,7 +825,7 @@ export function DataProvider({
         title: "Profissional criado",
         description: "O profissional foi adicionado com sucesso.",
       });
-      return res.data;
+      return res.data || null;
     } catch (err) {
       const msg =
         err instanceof Error
@@ -849,7 +849,7 @@ export function DataProvider({
         title: "Profissional atualizado",
         description: "Os dados do profissional foram atualizados.",
       });
-      return res.data;
+      return res.data || null;
     } catch (err) {
       const msg =
         err instanceof Error

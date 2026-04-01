@@ -2,11 +2,17 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
-import { listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from "@/services/googleCalendarAppsScript";
+import {
+  listCalendarEvents,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+} from "@/services/googleCalendarAppsScript";
 import { useData } from "@/lib/data-context";
 import type { Appointment, Professional } from "@/types";
 import { AppointmentStatus } from "@/types";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { CalendarView } from "@/components/features/agenda/calendar-view";
 import { AppointmentFormModal } from "@/components/features/agenda/appointment-form-modal";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +34,7 @@ function professionalDisplay(p: Professional) {
   const name = p.name ?? (p as { fullName?: string }).fullName;
   return name && p.functionTitle
     ? `${name} (${p.functionTitle})`
-    : p.email ?? "Sem e-mail";
+    : (p.email ?? "Sem e-mail");
 }
 
 export default function AgendaPage() {
@@ -71,13 +77,15 @@ export default function AgendaPage() {
       const end = new Date(start);
       end.setDate(end.getDate() + 7);
 
-      const professional = professionals.find((p) => p.id === filterProfessionalId);
+      const professional = professionals.find(
+        (p) => p.id === filterProfessionalId,
+      );
       const query = professional?.email ? professional.email : undefined;
 
       const resp = await listCalendarEvents(
         start.toISOString(),
         end.toISOString(),
-        query
+        query,
       );
       if (resp?.success) {
         setAppointments(resp.events || []);
@@ -115,13 +123,18 @@ export default function AgendaPage() {
       const matchService =
         !filterServiceId || desc.includes(`serviço: ${serviceName}`);
 
-      const professional = professionals.find((p) => p.id === filterProfessionalId);
-      const matchProfessional = !filterProfessionalId || (
-        professional && (
-          (ev.attendees || []).some((a) => a.email.toLowerCase() === professional.email?.toLowerCase()) ||
-          desc.includes(`profissional: ${professional.name?.toLowerCase()}`)
-        )
+      const professional = professionals.find(
+        (p) => p.id === filterProfessionalId,
       );
+      const matchProfessional =
+        !filterProfessionalId ||
+        (professional &&
+          ((ev.attendees || []).some(
+            (a) => a.email.toLowerCase() === professional.email?.toLowerCase(),
+          ) ||
+            desc.includes(
+              `profissional: ${professional.name?.toLowerCase()}`,
+            )));
 
       return matchSearch && matchClient && matchService && matchProfessional;
     });
@@ -237,12 +250,10 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie seus agendamentos sincronizados com Google Calendar
-        </p>
-      </div>
+      <PageHeader
+        title="Agenda"
+        description="Gerencie seus agendamentos sincronizados com Google Calendar"
+      />
 
       <Card>
         <CardContent className="pt-6">
@@ -270,7 +281,10 @@ export default function AgendaPage() {
             />
             <Combobox
               placeholder="Filtrar Profissional"
-              items={professionals.map((p) => ({ value: p.id, label: professionalDisplay(p) }))}
+              items={professionals.map((p) => ({
+                value: p.id,
+                label: professionalDisplay(p),
+              }))}
               value={filterProfessionalId}
               onChange={setFilterProfessionalId}
             />
