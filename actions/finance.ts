@@ -144,12 +144,13 @@ export async function createSaleAction(sale: NewSale) {
 
 /**
  * Helper to check if a sale is fully paid and update its status.
+ * Now also updates related appointments to 'completed'.
  */
 async function syncSaleStatus(supabase: any, saleId: number) {
   // Fetch fresh data including payments
   const { data: sale } = await supabase
     .from("sales")
-    .select("total_amount, payments(amount, status)")
+    .select("total_amount, appointment_id, payments(amount, status)")
     .eq("id", saleId)
     .single();
 
@@ -170,6 +171,17 @@ async function syncSaleStatus(supabase: any, saleId: number) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", saleId);
+
+  // Issue A & B Fix: Sync appointment status
+  if (sale.appointment_id && newStatus === "paid") {
+    await supabase
+      .from("appointments")
+      .update({
+        status: "completed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", sale.appointment_id);
+  }
 }
 
 /**
@@ -294,5 +306,70 @@ export async function updatePaymentStatusAction(
   } catch (error: any) {
     console.error("Error in updatePaymentStatusAction:", error);
     return { success: false, error: "Falha ao atualizar status do pagamento." };
+  }
+}
+
+/**
+ * Process a manual payment from physical POS (Issue C, D, Fatal Flaw).
+ * Resolves Rule 2 (Commission Tracking) by ensuring professional_id is persisted.
+ */
+export async function processManualPaymentAction(
+  saleId: number,
+  paymentMethod: string,
+  amount: number,
+  professionalId?: string
+) {
+  try {
+    const supabase = getSupabaseAdmin();
+    
+    // Rule 2 Fix: Resolve professional_id from the sale if not provided
+    // This ensures commission tracking is maintained even if manual payment is registered without explicit prof ID
+    let resolvedProfId = professionalId;
+    if (!resolvedProfId) {
+      const { data: saleRow } = await supabase
+        .from("sales")
+        .select("professional_id")
+        .eq("id", saleId)
+        .single();
+      resolvedProfId = saleRow?.professional_id;
+    }
+
+    // Issue D: Track WHO got paid and WHEN
+    const payload: any = {
+      sale_id: saleId,
+      amount: amount,
+      payment_method: paymentMethod,
+      status: "paid",
+      paid_at: new Date().toISOString(),
+      professional_id: resolvedProfId || null,
+    };
+
+    const { error } = await supabase.from("payments").insert([payload]);
+
+    if (error) {
+      return { success: false, error: parseSupabaseError(error).description };
+    }
+
+    // Fatal Flaw: Sum all successful payments and conditionally update status
+    await syncSaleStatus(supabase, saleId);
+
+    // Fetch fresh sale data to determine if fully paid
+    const { data: freshSale } = await supabase
+      .from("sales")
+      .select("status")
+      .eq("id", saleId)
+      .single();
+
+    revalidatePath("/financeiro");
+    revalidatePath("/agenda");
+    revalidatePath("/relatorios");
+
+    return { 
+      success: true, 
+      isFullyPaid: freshSale?.status === "paid" 
+    };
+  } catch (error: any) {
+    console.error("Error in processManualPaymentAction:", error);
+    return { success: false, error: "Falha ao processar pagamento." };
   }
 }

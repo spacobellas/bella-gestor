@@ -12,6 +12,7 @@ import {
   Edit,
   Trash2,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,14 +36,20 @@ interface CalendarViewProps {
   isLoading: boolean;
   onEdit?: (event: GoogleCalendarEvent) => void;
   onDelete?: (event: GoogleCalendarEvent) => void;
+  onCheckout?: (event: GoogleCalendarEvent) => void;
 }
 
+/**
+ * CalendarView: Visualizes weekly schedule.
+ * Rule 3: Prominently highlights past-due appointments needing checkout.
+ */
 export function CalendarView({
   currentDate,
   events,
   isLoading,
   onEdit,
   onDelete,
+  onCheckout,
 }: CalendarViewProps) {
   const getWeekRange = (date: Date) => {
     const start = new Date(date);
@@ -128,41 +135,39 @@ export function CalendarView({
                   ) : (
                     <ul className="divide-y">
                       {dayEvents.map((ev) => {
-                        const clientName = parseField(
-                          ev.description,
-                          "Cliente: ",
-                        );
+                        const clientName = parseField(ev.description, "Cliente: ");
                         const phone = parseField(ev.description, "Telefone: ");
-                        const professionalText = parseField(
-                          ev.description,
-                          "Profissional: ",
-                        );
+                        const professionalText = parseField(ev.description, "Profissional: ");
+                        
+                        const eventDate = new Date(ev.start.dateTime);
+                        const isPastDue = eventDate < new Date();
 
                         return (
                           <li
                             key={ev.id}
-                            className="px-3 py-3 hover:bg-muted/30 transition"
+                            className={`px-3 py-3 hover:bg-muted/30 transition ${isPastDue ? 'bg-orange-50/30' : ''}`}
                           >
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <div className="flex items-start gap-3 min-w-0">
-                                <div className="rounded bg-primary/10 p-2">
-                                  <Clock className="h-4 w-4 text-primary" />
+                              <div className="flex items-start gap-3 min-w-0 flex-1">
+                                <div className={`rounded p-2 ${isPastDue ? 'bg-orange-100' : 'bg-primary/10'}`}>
+                                  <Clock className={`h-4 w-4 ${isPastDue ? 'text-orange-600' : 'text-primary'}`} />
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-sm font-medium truncate">
-                                    {new Date(
-                                      ev.start.dateTime,
-                                    ).toLocaleTimeString("pt-BR", {
+                                  <div className="text-sm font-medium truncate flex items-center gap-2">
+                                    {eventDate.toLocaleTimeString("pt-BR", {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                     })}{" "}
                                     –{" "}
-                                    {new Date(
-                                      ev.end.dateTime,
-                                    ).toLocaleTimeString("pt-BR", {
+                                    {new Date(ev.end.dateTime).toLocaleTimeString("pt-BR", {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                     })}
+                                    {isPastDue && (
+                                      <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold">
+                                        <AlertCircle className="h-2.5 w-2.5" /> PENDENTE
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-muted-foreground truncate">
                                     {ev.summary}
@@ -181,54 +186,50 @@ export function CalendarView({
                                       </span>
                                     )}
                                     {professionalText && (
-                                      <Badge variant="outline">
+                                      <Badge variant="outline" className="text-[10px] h-4">
                                         {professionalText}
                                       </Badge>
                                     )}
                                   </div>
                                 </div>
                               </div>
-
-                              {(onEdit || onDelete) && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      Ações
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    {onEdit && (
-                                      <DropdownMenuItem
-                                        onClick={() => onEdit(ev)}
-                                      >
-                                        <Edit className="h-4 w-4 mr-2" />
-                                        Editar
+                              
+                              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                {isPastDue && onCheckout && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="default"
+                                    className="bg-green-600 hover:bg-green-700 text-white font-bold h-8" 
+                                    onClick={() => onCheckout(ev)}
+                                  >
+                                    Finalizar e Pagar
+                                  </Button>
+                                )}
+                                {(onEdit || onDelete) && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="outline" size="sm" className="h-8">
+                                        Ações
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      {onEdit && (
+                                        <DropdownMenuItem onClick={() => onEdit(ev)}>
+                                          <Edit className="h-4 w-4 mr-2" /> Editar
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem onClick={() => window.open(ev.htmlLink || "#", "_blank")}>
+                                        <CalendarIcon className="h-4 w-4 mr-2" /> Ver no Google
                                       </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        window.open(
-                                          ev.htmlLink || "#",
-                                          "_blank",
-                                          "noopener,noreferrer",
-                                        )
-                                      }
-                                    >
-                                      <CalendarIcon className="h-4 w-4 mr-2" />
-                                      Ver no Google
-                                    </DropdownMenuItem>
-                                    {onDelete && (
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() => onDelete(ev)}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Excluir
-                                      </DropdownMenuItem>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
+                                      {onDelete && (
+                                        <DropdownMenuItem className="text-destructive" onClick={() => onDelete(ev)}>
+                                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                                        </DropdownMenuItem>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </div>
                             </div>
                           </li>
                         );

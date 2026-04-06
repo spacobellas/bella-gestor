@@ -5,7 +5,7 @@ import {
   createCalendarEvent,
   listCalendarEvents,
 } from "@/services/googleCalendarAppsScript";
-import type { Professional, Appointment } from "@/types";
+import type { Professional, Appointment, Sale } from "@/types";
 import { AppointmentStatus } from "@/types";
 import { useData } from "@/lib/data-context";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CalendarView } from "@/components/features/agenda/calendar-view";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
+import { CheckoutModal } from "@/components/modals/checkout-modal";
 import { ptBR } from "date-fns/locale";
 
 // ─── Reusable Combobox ────────────────────────────────────────────────────────
@@ -143,6 +144,8 @@ export default function CreateAppointmentPage() {
     professionals,
     refreshData,
     addAppointment,
+    appointments: internalAppointments,
+    sales,
     isLoading: isDataLoading,
   } = useData();
 
@@ -188,6 +191,10 @@ export default function CreateAppointmentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Checkout state (Rule 3 Alignment)
+  const [checkoutSale, setCheckoutSale] = useState<Sale | null>(null);
+  const [isSearchingSale, setIsSearchingSale] = useState(false);
+
   useEffect(() => {
     if (allClients.length === 0 && !isDataLoading) {
       void refreshData();
@@ -206,7 +213,6 @@ export default function CreateAppointmentPage() {
         const end = new Date(start);
         end.setDate(end.getDate() + 7);
 
-        // For "own" mode, pass the professional's email as a search query
         const professional = professionals.find((p) => p.id === professionalId);
         const query =
           mode === "own" && professional?.email
@@ -232,7 +238,6 @@ export default function CreateAppointmentPage() {
 
         let events: CalendarEvent[] = result.events || [];
 
-        // Client-side filter: check attendees array AND professional name in description
         if (mode === "own" && professional?.email) {
           const profEmail = professional.email.toLowerCase();
           const profName = (professional.name || "").toLowerCase();
@@ -257,90 +262,69 @@ export default function CreateAppointmentPage() {
   );
 
   useEffect(() => {
-    if (!viewOpen) return;
-    if (viewMode === "own" && !filterProfId) {
-      setViewEvents([]);
-      return;
+    if (viewOpen) {
+      void fetchEvents(viewMode, filterProfId, currentDate);
     }
-    void fetchEvents(viewMode, filterProfId, currentDate);
   }, [viewOpen, viewMode, filterProfId, currentDate, fetchEvents]);
 
-  // ── Filtered events for display ───────────────────────────────────────────
-  const filteredEvents = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    if (!q) return viewEvents;
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleOpenForm = () => setFormOpen(true);
+  const handleOpenViewChoice = () => setViewChoiceOpen(true);
 
-    return viewEvents.filter((ev) => {
-      const desc = (ev.description || "").toLowerCase();
-      const summary = (ev.summary || "").toLowerCase();
-      return summary.includes(q) || desc.includes(q);
-    });
-  }, [viewEvents, searchQuery]);
-
-  // ── Choice dialog handlers ────────────────────────────────────────────────
   function handleChooseAll() {
-    setViewChoiceOpen(false);
     setViewMode("all");
     setFilterProfId("");
+    setViewChoiceOpen(false);
     setViewOpen(true);
   }
 
   function handleChooseOwn() {
-    setViewChoiceOpen(false);
     setViewMode("own");
     setFilterProfId("");
+    setViewChoiceOpen(false);
     setViewOpen(true);
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function professionalDisplay(p: Professional) {
-    const name = p.name ?? (p as { fullName?: string }).fullName;
-    return name && p.functionTitle
-      ? `${name} (${p.functionTitle})`
-      : (p.email ?? "Sem e-mail");
-  }
+  const handleCheckout = async (ev: any) => {
+    setIsSearchingSale(true);
+    try {
+      const parseField = (desc: string | undefined, label: string) => {
+        const line = (desc || "").split("\n").find((p) => p.startsWith(label));
+        return line ? line.replace(label, "").trim() : "";
+      };
 
-  // ── Create appointment ────────────────────────────────────────────────────
-  const selectedService = useMemo(
-    () => services.find((s) => s.id === formData.serviceId),
-    [services, formData.serviceId],
-  );
+      const clientName = parseField(ev.description, "Cliente: ");
+      const startTime = new Date(ev.start.dateTime).getTime();
 
-  const availableVariants = useMemo(
-    () =>
-      (selectedService?.variants || []).map((v) => ({
-        value: v.id,
-        label: `${v.variantName} (${v.duration} min) - R$${v.price.toFixed(2)}`,
-      })),
-    [selectedService],
-  );
+      const matchedAppt = internalAppointments?.find(a => {
+        const aTime = new Date(a.startTime).getTime();
+        const aClient = allClients.find(c => c.id === a.clientId)?.name;
+        return Math.abs(aTime - startTime) < 60000 && aClient === clientName;
+      });
 
-  const clientItems = useMemo(
-    () =>
-      (clients || []).map((c) => {
-        const phoneLabel = c.phone ? formatBrazilianPhone(c.phone) : "";
-        return {
-          value: c.id,
-          label: c.name ? `${c.name} - ${phoneLabel}` : `(Sem nome)`,
-          hint: c.phone ? unformatPhone(c.phone) : "",
-        };
-      }),
-    [clients],
-  );
+      if (!matchedAppt) {
+        toast({ variant: "destructive", title: "Erro", description: "Vínculo interno não encontrado." });
+        return;
+      }
 
-  const serviceItems = useMemo(
-    () => (services || []).map((s) => ({ value: s.id, label: s.name })),
-    [services],
-  );
+      const sale = sales?.find(s => s.appointmentId === matchedAppt.id);
+      if (!sale) {
+        toast({ variant: "destructive", title: "Erro", description: "Venda não encontrada para este agendamento." });
+        return;
+      }
 
-  const professionalItems = useMemo(
-    () =>
-      professionals.map((p) => ({
-        value: p.id,
-        label: professionalDisplay(p),
-      })),
-    [professionals],
-  );
+      if (sale.status === 'paid') {
+        toast({ title: "Informativo", description: "Este agendamento já consta como pago." });
+        return;
+      }
+
+      setCheckoutSale(sale);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Erro ao buscar dados financeiros" });
+    } finally {
+      setIsSearchingSale(false);
+    }
+  };
 
   async function onSave() {
     if (
@@ -361,9 +345,7 @@ export default function CreateAppointmentPage() {
 
     const c = clients.find((x) => x.id === formData.clientId);
     const s = services.find((x) => x.id === formData.serviceId);
-    const sv = selectedService?.variants?.find(
-      (x) => x.id === formData.serviceVariantId,
-    );
+    const sv = s?.variants?.find((x) => x.id === formData.serviceVariantId);
     const prof = professionals.find((x) => x.id === formData.professionalId);
 
     if (!c || !s || !sv) {
@@ -371,7 +353,7 @@ export default function CreateAppointmentPage() {
       return;
     }
 
-    const profLine = prof ? `\nProfissional: ${professionalDisplay(prof)}` : "";
+    const profLine = prof ? `\nProfissional: ${prof.name || prof.email}` : "";
     setSaving(true);
 
     try {
@@ -391,20 +373,14 @@ export default function CreateAppointmentPage() {
 
       const googleRes = await createCalendarEvent(googlePayload);
       if (!googleRes?.success)
-        throw new Error(
-          googleRes?.error || "Erro ao criar agendamento no Google",
-        );
+        throw new Error(googleRes?.error || "Erro ao criar agendamento no Google");
 
+      // Rule 1 Alignment: Using addAppointment which calls the atomic RPC
       const supabasePayload: Omit<Appointment, "id" | "created_at"> = {
         clientId: formData.clientId,
         professionalId: formData.professionalId,
         startTime: new Date(formData.startTime).toISOString(),
-        endTime: formData.endTime
-          ? new Date(formData.endTime).toISOString()
-          : new Date(
-              new Date(formData.startTime).getTime() +
-                (sv.duration || 30) * 60000,
-            ).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
         status: AppointmentStatus.SCHEDULED,
         notes: formData.notes,
         serviceVariants: [
@@ -414,37 +390,78 @@ export default function CreateAppointmentPage() {
       };
 
       const supabaseRes = await addAppointment(supabasePayload);
-      if (!supabaseRes)
-        throw new Error("Erro ao registrar agendamento no banco de dados.");
+      if (!supabaseRes) throw new Error("Erro ao registrar agendamento no banco de dados.");
 
       toast({
         title: "Agendamento criado!",
-        description: `${c.name} agendado para ${new Date(formData.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`,
+        description: `${c.name} agendado para ${new Date(formData.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}. Venda pendente gerada automaticamente.`,
       });
       setFormOpen(false);
       setFormData(initialFormState);
+      refreshData();
     } catch (e: unknown) {
-      const errorMessage =
-        e instanceof Error
-          ? e.message
-          : "Ocorreu um erro ao salvar o agendamento.";
-      toast({
-        variant: "destructive",
-        title: "Falha ao criar",
-        description: errorMessage,
-      });
+      const errorMessage = e instanceof Error ? e.message : "Ocorreu um erro ao salvar o agendamento.";
+      toast({ variant: "destructive", title: "Falha ao criar", description: errorMessage });
     } finally {
       setSaving(false);
     }
   }
 
+  // ── Mappings ──────────────────────────────────────────────────────────────
+  const clientItems = useMemo(
+    () =>
+      (clients || []).map((c) => {
+        const phoneLabel = c.phone ? formatBrazilianPhone(c.phone) : "";
+        return {
+          value: c.id,
+          label: c.name ? `${c.name} - ${phoneLabel}` : `(Sem nome)`,
+          hint: c.phone ? unformatPhone(c.phone) : "",
+        };
+      }),
+    [clients],
+  );
+
+  const serviceItems = useMemo(
+    () => (services || []).map((s) => ({ value: s.id, label: s.name })),
+    [services],
+  );
+
+  const selectedService = useMemo(
+    () => services.find((s) => s.id === formData.serviceId),
+    [services, formData.serviceId],
+  );
+
+  const availableVariants = useMemo(
+    () =>
+      (selectedService?.variants || []).map((v) => ({
+        value: v.id,
+        label: `${v.variantName} (${v.duration} min) - R$${v.price.toFixed(2)}`,
+      })),
+    [selectedService],
+  );
+
+  const professionalItems = useMemo(
+    () =>
+      professionals.map((p) => ({
+        value: p.id,
+        label: p.name && p.functionTitle ? `${p.name} (${p.functionTitle})` : p.email || "Profissional",
+      })),
+    [professionals],
+  );
+
+  const filteredEvents = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return viewEvents;
+    return viewEvents.filter((ev) =>
+      ev.summary.toLowerCase().includes(q) || (ev.description || "").toLowerCase().includes(q)
+    );
+  }, [viewEvents, searchQuery]);
+
   if (isDataLoading && allClients.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-2">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">
-          Carregando dados...
-        </p>
+        <p className="text-muted-foreground animate-pulse">Carregando dados...</p>
       </div>
     );
   }
@@ -452,33 +469,28 @@ export default function CreateAppointmentPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-8 p-6 bg-gradient-to-b from-background to-muted/20">
       <div className="text-center space-y-4 max-w-2xl px-4">
-        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-primary">
-          Agendamentos
-        </h1>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-primary">Agendamentos</h1>
         <p className="text-lg sm:text-xl text-muted-foreground">
-          Crie um novo agendamento ou visualize os agendamentos existentes no
-          Spaço Bellas.
+          Crie um novo agendamento ou visualize os horários existentes no Spaço Bellas.
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md px-4">
         <Button
           size="lg"
-          onClick={() => setFormOpen(true)}
+          onClick={handleOpenForm}
           className="w-full sm:flex-1 h-16 text-lg font-semibold shadow-xl hover:scale-105 transition-transform"
         >
-          <CalendarPlus className="mr-3 h-6 w-6" />
-          Novo Agendamento
+          <CalendarPlus className="mr-3 h-6 w-6" /> Novo Agendamento
         </Button>
 
         <Button
           size="lg"
           variant="outline"
-          onClick={() => setViewChoiceOpen(true)}
+          onClick={handleOpenViewChoice}
           className="w-full sm:flex-1 h-16 text-lg font-semibold shadow-md hover:bg-muted transition-colors"
         >
-          <CalendarSearch className="mr-3 h-6 w-6" />
-          Ver Agenda
+          <CalendarSearch className="mr-3 h-6 w-6" /> Ver Agenda
         </Button>
       </div>
 
@@ -487,9 +499,7 @@ export default function CreateAppointmentPage() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Visualizar agendamentos</DialogTitle>
-            <DialogDescription>
-              Escolha quais agendamentos você deseja ver.
-            </DialogDescription>
+            <DialogDescription>Escolha quais agendamentos você deseja ver.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <button
@@ -500,9 +510,7 @@ export default function CreateAppointmentPage() {
               <Users className="h-5 w-5 text-primary flex-shrink-0" />
               <div>
                 <div className="font-medium">Todos os agendamentos</div>
-                <div className="text-sm text-muted-foreground">
-                  Visualizar a agenda completa
-                </div>
+                <div className="text-sm text-muted-foreground">Visualizar a agenda completa</div>
               </div>
             </button>
             <button
@@ -513,9 +521,7 @@ export default function CreateAppointmentPage() {
               <User className="h-5 w-5 text-primary flex-shrink-0" />
               <div>
                 <div className="font-medium">Meus agendamentos</div>
-                <div className="text-sm text-muted-foreground">
-                  Filtrar por profissional
-                </div>
+                <div className="text-sm text-muted-foreground">Filtrar por profissional</div>
               </div>
             </button>
           </div>
@@ -523,24 +529,13 @@ export default function CreateAppointmentPage() {
       </Dialog>
 
       {/* Full View Dialog */}
-      <Dialog
-        open={viewOpen}
-        onOpenChange={(open) => {
-          setViewOpen(open);
-          if (!open) setViewEvents([]);
-        }}
-      >
+      <Dialog open={viewOpen} onOpenChange={(open) => { setViewOpen(open); if (!open) setViewEvents([]); }}>
         <DialogContent className="sm:max-w-4xl max-h-[95vh] flex flex-col p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>
-              {viewMode === "all"
-                ? "Todos os Agendamentos"
-                : "Meus Agendamentos"}
-            </DialogTitle>
+            <DialogTitle>{viewMode === "all" ? "Todos os Agendamentos" : "Meus Agendamentos"}</DialogTitle>
           </DialogHeader>
 
           <div className="flex-1 overflow-auto space-y-4 pr-1">
-            {/* Calendar Controls (similar to /agenda) */}
             <Card>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -562,89 +557,41 @@ export default function CreateAppointmentPage() {
                     />
                   )}
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-10 w-10"
-                      onClick={() => {
-                        const d = new Date(currentDate);
-                        d.setDate(d.getDate() - 7);
-                        setCurrentDate(d);
-                      }}
-                    >
+                    <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); }}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 px-4"
-                      onClick={() => setCurrentDate(new Date())}
-                    >
-                      Hoje
-                    </Button>
-
+                    <Button variant="outline" size="sm" className="h-10 px-4" onClick={() => setCurrentDate(new Date())}>Hoje</Button>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-10 w-10"
-                        >
-                          <CalendarIcon className="h-4 w-4" />
-                        </Button>
+                        <Button variant="outline" size="icon" className="h-10 w-10"><CalendarIcon className="h-4 w-4" /></Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={currentDate}
-                          onSelect={(date) => date && setCurrentDate(date)}
-                          locale={ptBR}
-                          initialFocus
-                        />
+                        <Calendar mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} locale={ptBR} initialFocus />
                       </PopoverContent>
                     </Popover>
-
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-10 w-10"
-                      onClick={() => {
-                        const d = new Date(currentDate);
-                        d.setDate(d.getDate() + 7);
-                        setCurrentDate(d);
-                      }}
-                    >
+                    <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); }}>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
                 <div className="mt-4 text-center text-lg font-semibold uppercase">
-                  {currentDate.toLocaleDateString("pt-BR", {
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {currentDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
                 </div>
               </CardContent>
             </Card>
 
             {viewMode === "own" && !filterProfId ? (
-              <p className="text-center text-muted-foreground py-10 text-sm">
-                Selecione um profissional acima para ver os agendamentos.
-              </p>
+              <p className="text-center text-muted-foreground py-10 text-sm">Selecione um profissional acima para ver os agendamentos.</p>
             ) : (
               <CalendarView
                 currentDate={currentDate}
                 events={filteredEvents}
                 isLoading={loadingEvents}
+                onCheckout={handleCheckout}
               />
             )}
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewOpen(false)}>
-              Fechar
-            </Button>
-          </DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setViewOpen(false)}>Fechar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -654,7 +601,7 @@ export default function CreateAppointmentPage() {
           <DialogHeader>
             <DialogTitle>Novo agendamento</DialogTitle>
             <DialogDescription>
-              Preencha os dados abaixo para sincronizar com o Google Calendar.
+              Preencha os dados abaixo para sincronizar com o Google Calendar e gerar a venda pendente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -674,13 +621,7 @@ export default function CreateAppointmentPage() {
                   placeholder="Selecione o serviço"
                   items={serviceItems}
                   value={formData.serviceId}
-                  onChange={(v) =>
-                    setFormData((p) => ({
-                      ...p,
-                      serviceId: v,
-                      serviceVariantId: "",
-                    }))
-                  }
+                  onChange={(v) => setFormData((p) => ({ ...p, serviceId: v, serviceVariantId: "" }))}
                 />
               </div>
               <div className="space-y-1">
@@ -689,17 +630,9 @@ export default function CreateAppointmentPage() {
                   placeholder="Selecione o tipo"
                   items={availableVariants}
                   value={formData.serviceVariantId}
-                  onChange={(v) =>
-                    setFormData((p) => ({ ...p, serviceVariantId: v }))
-                  }
-                  disabled={
-                    !formData.serviceId || availableVariants.length === 0
-                  }
-                  emptyText={
-                    formData.serviceId
-                      ? "Nenhum tipo encontrado"
-                      : "Selecione um serviço primeiro"
-                  }
+                  onChange={(v) => setFormData((p) => ({ ...p, serviceVariantId: v }))}
+                  disabled={!formData.serviceId || availableVariants.length === 0}
+                  emptyText={formData.serviceId ? "Nenhum tipo encontrado" : "Selecione um serviço primeiro"}
                 />
               </div>
               <div className="space-y-1">
@@ -708,69 +641,56 @@ export default function CreateAppointmentPage() {
                   placeholder="Selecione a profissional"
                   items={professionalItems}
                   value={formData.professionalId}
-                  onChange={(v) =>
-                    setFormData((p) => ({ ...p, professionalId: v }))
-                  }
+                  onChange={(v) => setFormData((p) => ({ ...p, professionalId: v }))}
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Data/Hora Início</label>
-                <Input
-                  type="datetime-local"
-                  value={formData.startTime}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, startTime: e.target.value }))
-                  }
-                />
+                <Input type="datetime-local" value={formData.startTime} onChange={(e) => setFormData((p) => ({ ...p, startTime: e.target.value }))} />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Data/Hora Término</label>
-                <Input
-                  type="datetime-local"
-                  value={formData.endTime}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, endTime: e.target.value }))
-                  }
-                />
+                <Input type="datetime-local" value={formData.endTime} onChange={(e) => setFormData((p) => ({ ...p, endTime: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Observações</label>
-              <Input
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, notes: e.target.value }))
-                }
-                placeholder="Notas internas (opcional)"
-              />
+              <Input value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas internas (opcional)" />
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setFormOpen(false)}
-              disabled={saving}
-            >
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving}>Cancelar</Button>
             <Button onClick={onSave} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Criar Agendamento
-                </>
-              )}
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><Plus className="mr-2 h-4 w-4" /> Criar Agendamento</>}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isSearchingSale && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[100]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {checkoutSale && (
+        <CheckoutModal
+          isOpen={!!checkoutSale}
+          onClose={() => setCheckoutSale(null)}
+          saleId={Number(checkoutSale.id)}
+          clientName={checkoutSale.clientName || "Cliente"}
+          totalAmount={Number(checkoutSale.totalAmount)}
+          alreadyPaidAmount={(checkoutSale.payments || [])
+            .filter((p: any) => p.status === "paid")
+            .reduce((acc: number, p: any) => acc + Number(p.amount), 0)}
+          onSuccess={(isFullyPaid) => {
+            refreshData();
+            if (isFullyPaid) setCheckoutSale(null);
+          }}
+        />
+      )}
     </div>
   );
 }

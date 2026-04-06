@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { parseSupabaseError } from "@/lib/error-handler";
-import { Appointment, SaleStatus } from "@/types";
+import { Appointment, SaleStatus, AppointmentStatus } from "@/types";
 import { supabaseAppointmentToAppointment } from "@/lib/utils/mapping";
-import { createSaleAction } from "./finance";
 
 /**
- * Creates a new appointment.
+ * Creates a new appointment atomically with its sale using an RPC.
+ * Resolves Rule 1 (Atomicity) and Rule 2 (Commission Tracking).
  */
 export async function createAppointmentAction(
   appointment: Omit<Appointment, "id" | "created_at">,
@@ -16,81 +16,26 @@ export async function createAppointmentAction(
   try {
     const supabase = getSupabaseAdmin();
 
-    // 1. Create the appointment
-    const payload = {
-      client_id: parseInt(appointment.clientId),
-      professional_id: appointment.professionalId,
-      start_time: appointment.startTime,
-      end_time: appointment.endTime,
-      status: appointment.status,
-      notes: appointment.notes || null,
+    const rpcPayload = {
+      p_client_id: parseInt(appointment.clientId),
+      p_professional_id: appointment.professionalId,
+      p_start_time: appointment.startTime,
+      p_end_time: appointment.endTime,
+      p_notes: appointment.notes || null,
+      p_service_variants: appointment.serviceVariants?.map(sv => ({
+        service_variant_id: parseInt(sv.serviceVariantId),
+        quantity: sv.quantity,
+      })) || []
     };
 
-    const { data: appointmentData, error: appointmentError } = await supabase
-      .from("appointments")
-      .insert([payload])
-      .select(`*, clients(full_name)`)
-      .single();
+    // Rule 1: Use atomic RPC to prevent "ghost appointments"
+    const { data, error } = await supabase.rpc('create_appointment_with_sale', rpcPayload);
 
-    if (appointmentError) {
+    if (error) {
       return {
         success: false,
-        error: parseSupabaseError(appointmentError).description,
+        error: parseSupabaseError(error).description,
       };
-    }
-
-    const appointmentId = appointmentData.id;
-
-    // 2. Create appointment services and calculate total price
-    let totalAmount = 0;
-    const items: Array<{
-      serviceVariantId: string;
-      quantity: number;
-      unitPrice: number;
-      subtotal: number;
-      professionalId: string;
-    }> = [];
-
-    if (appointment.serviceVariants && appointment.serviceVariants.length > 0) {
-      for (const sv of appointment.serviceVariants) {
-        // Fetch price for each variant
-        const { data: variantData } = await supabase
-          .from("service_variants")
-          .select("price")
-          .eq("id", parseInt(sv.serviceVariantId))
-          .single();
-
-        const unitPrice = variantData?.price || 0;
-        const subtotal = unitPrice * sv.quantity;
-        totalAmount += subtotal;
-
-        items.push({
-          serviceVariantId: sv.serviceVariantId,
-          quantity: sv.quantity,
-          unitPrice: unitPrice,
-          subtotal: subtotal,
-          professionalId: appointment.professionalId,
-        });
-
-        // Insert into appointment_services
-        await supabase.from("appointment_services").insert([
-          {
-            appointment_id: appointmentId,
-            service_variant_id: parseInt(sv.serviceVariantId),
-            quantity: sv.quantity,
-          },
-        ]);
-      }
-
-      // 3. Create a pending sale automatically
-      await createSaleAction({
-        clientId: appointment.clientId,
-        appointmentId: String(appointmentId),
-        items: items,
-        totalAmount: totalAmount,
-        status: SaleStatus.PENDING,
-        notes: `Gerada automaticamente do agendamento #${appointmentId}`,
-      });
     }
 
     revalidatePath("/agenda");
@@ -98,7 +43,7 @@ export async function createAppointmentAction(
 
     return {
       success: true,
-      data: supabaseAppointmentToAppointment(appointmentData),
+      data: supabaseAppointmentToAppointment(data),
     };
   } catch (error: unknown) {
     console.error("Error in createAppointmentAction:", error);
@@ -107,7 +52,8 @@ export async function createAppointmentAction(
 }
 
 /**
- * Updates an existing appointment.
+ * Updates an existing appointment and syncs related sale status.
+ * Resolves Rule 3 (End-of-day reconciliation).
  */
 export async function updateAppointmentAction(
   id: string,
@@ -146,7 +92,16 @@ export async function updateAppointmentAction(
       return { success: false, error: parseSupabaseError(error).description };
     }
 
+    // Rule 3 Sync: If appointment is cancelled, cancel the associated sale
+    if (appointment.status === AppointmentStatus.CANCELLED) {
+      await supabase
+        .from("sales")
+        .update({ status: SaleStatus.CANCELLED, updated_at: new Date().toISOString() })
+        .eq("appointment_id", parseInt(id));
+    }
+
     revalidatePath("/agenda");
+    revalidatePath("/financeiro");
     return { success: true, data: supabaseAppointmentToAppointment(data) };
   } catch (error: unknown) {
     console.error("Error in updateAppointmentAction:", error);
