@@ -6,9 +6,6 @@ import { useMemo, useState } from "react";
 import { Combobox } from "@/components/ui/combobox";
 import type {
   Sale,
-  Service,
-  ServiceVariant,
-  Professional,
   Payment,
 } from "@/types";
 import { useToast } from "@/hooks/use-toast";
