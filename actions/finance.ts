@@ -14,6 +14,7 @@ export type NewSale = Omit<
   "id" | "payments" | "created_at" | "updatedAt" | "clientName" | "totalAmount"
 > & {
   totalAmount?: number;
+  createdAt?: string;
 };
 
 /**
@@ -22,6 +23,20 @@ export type NewSale = Omit<
 export async function createSaleAction(sale: NewSale) {
   try {
     const supabase = getSupabaseAdmin();
+
+    // Fetch appointment start time if linked
+    let inheritedCreatedAt = sale.createdAt || new Date().toISOString();
+    if (sale.appointmentId) {
+      const { data: appt } = await supabase
+        .from("appointments")
+        .select("start_time")
+        .eq("id", parseInt(sale.appointmentId))
+        .single();
+      
+      if (appt?.start_time) {
+        inheritedCreatedAt = appt.start_time;
+      }
+    }
 
     // Get default commission
     const { data: settingData } = await supabase
@@ -48,6 +63,7 @@ export async function createSaleAction(sale: NewSale) {
           total_amount: computedTotal,
           status: sale.status || "pending",
           notes: sale.notes || null,
+          created_at: inheritedCreatedAt,
         },
       ])
       .select("*")
