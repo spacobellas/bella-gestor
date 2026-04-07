@@ -367,6 +367,26 @@ export default function CreateAppointmentPage() {
     setSaving(true);
 
     try {
+      // 1. DB insertion FIRST (atomic RPC via addAppointment)
+      const supabasePayload: Omit<Appointment, "id" | "created_at"> = {
+        clientId: formData.clientId,
+        professionalId: formData.professionalId,
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+        status: AppointmentStatus.SCHEDULED,
+        notes: formData.notes,
+        serviceVariants: [
+          { serviceVariantId: formData.serviceVariantId, quantity: 1 },
+        ],
+        totalPrice: sv.price,
+      };
+
+      const supabaseRes = await addAppointment(supabasePayload);
+      if (!supabaseRes) {
+        throw new Error("Erro ao registrar agendamento no banco de dados.");
+      }
+
+      // 2. Google Calendar sync SECOND
       const googlePayload = {
         summary: `${c.name} - ${s.name} (${sv.variantName})`,
         description: `Cliente: ${c.name}\nTelefone: ${c.phone}\nServiço: ${s.name}\nTipo: ${sv.variantName}${profLine}${
@@ -382,25 +402,14 @@ export default function CreateAppointmentPage() {
       };
 
       const googleRes = await createCalendarEvent(googlePayload);
-      if (!googleRes?.success)
-        throw new Error(googleRes?.error || "Erro ao criar agendamento no Google");
-
-      // Rule 1 Alignment: Using addAppointment which calls the atomic RPC
-      const supabasePayload: Omit<Appointment, "id" | "created_at"> = {
-        clientId: formData.clientId,
-        professionalId: formData.professionalId,
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString(),
-        status: AppointmentStatus.SCHEDULED,
-        notes: formData.notes,
-        serviceVariants: [
-          { serviceVariantId: formData.serviceVariantId, quantity: 1 },
-        ],
-        totalPrice: sv.price,
-      };
-
-      const supabaseRes = await addAppointment(supabasePayload);
-      if (!supabaseRes) throw new Error("Erro ao registrar agendamento no banco de dados.");
+      if (!googleRes?.success) {
+        console.error("Google sync failed, but DB record exists:", googleRes?.error);
+        toast({
+          variant: "destructive",
+          title: "Erro no Google Calendar",
+          description: "O agendamento foi salvo no banco, mas não foi sincronizado com o Google.",
+        });
+      }
 
       toast({
         title: "Agendamento criado!",
@@ -450,11 +459,18 @@ export default function CreateAppointmentPage() {
     [selectedService],
   );
 
+  function professionalDisplay(p: Professional) {
+    const name = p.name ?? (p as { fullName?: string }).fullName;
+    return name && p.functionTitle
+      ? `${name} (${p.functionTitle})`
+      : (p.email ?? "Sem e-mail");
+  }
+
   const professionalItems = useMemo(
     () =>
       professionals.map((p) => ({
         value: p.id,
-        label: p.name && p.functionTitle ? `${p.name} (${p.functionTitle})` : p.email || "Profissional",
+        label: professionalDisplay(p),
       })),
     [professionals],
   );

@@ -36,8 +36,8 @@ interface CheckoutModalProps {
 }
 
 /**
- * CheckoutModal: Handles physical POS payments (Credit/Debit/Cash/PIX).
- * Supports split and partial payments by staying open until fully paid.
+ * CheckoutModal: Simplified physical POS payment registration.
+ * Focuses on extreme simplicity: Method, Amount, Confirm.
  */
 export function CheckoutModal({
   isOpen,
@@ -49,19 +49,12 @@ export function CheckoutModal({
   onSuccess,
 }: CheckoutModalProps) {
   const { toast } = useToast();
-  const [currentPaid, setCurrentPaid] = useState(alreadyPaidAmount);
-  
-  const balance = Math.max(0, totalAmount - currentPaid);
+  const balance = Math.max(0, totalAmount - alreadyPaidAmount);
   
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [amount, setAmount] = useState<number>(balance);
   const [error, setError] = useState<string>("");
-
-  // Sync internal state with props when modal opens or alreadyPaidAmount changes
-  useEffect(() => {
-    setCurrentPaid(alreadyPaidAmount);
-  }, [alreadyPaidAmount, isOpen]);
 
   // Update suggested payment amount whenever balance changes
   useEffect(() => {
@@ -106,8 +99,6 @@ export function CheckoutModal({
           title: "Pagamento Parcial",
           description: `Recebido ${formatCurrency(amount)}. Restam ${formatCurrency(remaining)}.`,
         });
-        // Update local state to show updated balance
-        setCurrentPaid((prev) => prev + amount);
         setPaymentMethod("");
       }
     } catch (e) {
@@ -123,17 +114,17 @@ export function CheckoutModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
-            Finalizar Venda (Físico/POS)
+            Registrar Pagamento
           </DialogTitle>
           <DialogDescription>
-            Cliente: <span className="font-semibold text-foreground">{clientName}</span> | Ref Venda: #{saleId}
+            Cliente: <span className="font-semibold text-foreground">{clientName}</span> | Venda: #{saleId}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="space-y-6 pt-2">
           <div className="grid grid-cols-2 gap-4 text-center">
             <div className="rounded-md border p-3 bg-muted/30">
-              <div className="text-xs text-muted-foreground uppercase font-medium">Total da Venda</div>
+              <div className="text-xs text-muted-foreground uppercase font-medium">Total</div>
               <div className="font-semibold text-lg">{formatCurrency(totalAmount)}</div>
             </div>
             <div className="rounded-md border p-3 bg-primary/5 border-primary/20">
@@ -144,42 +135,37 @@ export function CheckoutModal({
 
           <Separator />
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="method">Método de Pagamento</Label>
               <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger id="method">
-                  <SelectValue placeholder="Selecione o método..." />
+                <SelectTrigger id="method" className="h-12 text-base">
+                  <SelectValue placeholder="Como o cliente pagou?" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Cartão de Crédito">Cartão de Crédito (Maquininha)</SelectItem>
                   <SelectItem value="Cartão de Débito">Cartão de Débito (Maquininha)</SelectItem>
-                  <SelectItem value="PIX">PIX Transferência</SelectItem>
-                  <SelectItem value="Dinheiro">Dinheiro (Espécie)</SelectItem>
+                  <SelectItem value="PIX">PIX</SelectItem>
+                  <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Valor a Receber Agora (R$)</Label>
+              <Label htmlFor="amount">Valor Recebido (R$)</Label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
+                <span className="absolute left-3 top-3 text-muted-foreground text-lg">R$</span>
                 <Input
                   id="amount"
                   type="number"
                   min={0.01}
                   max={balance}
                   step={0.01}
-                  className="pl-9"
+                  className="pl-10 h-12 text-lg font-semibold"
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
                 />
               </div>
-              {balance > 0 && amount < Number(balance.toFixed(2)) && (
-                <p className="text-[10px] text-orange-600 font-medium italic">
-                  * Pagamento parcial detectado. A venda continuará pendente.
-                </p>
-              )}
             </div>
           </div>
 
@@ -190,23 +176,23 @@ export function CheckoutModal({
             </Alert>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="ghost" onClick={onClose} disabled={loading}>
-              Fechar
-            </Button>
+          <div className="flex flex-col gap-3 pt-2">
             <Button 
               onClick={handleSubmit} 
               disabled={loading || balance <= 0 || !paymentMethod || amount <= 0}
-              className="bg-green-600 hover:bg-green-700 text-white min-w-[140px]"
+              className="bg-green-600 hover:bg-green-700 text-white h-14 text-lg font-bold w-full shadow-lg"
             >
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Processando...
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  Confirmando...
                 </>
               ) : (
-                "Confirmar Recebimento"
+                "CONFIRMAR PAGAMENTO"
               )}
+            </Button>
+            <Button variant="ghost" onClick={onClose} disabled={loading} className="w-full">
+              Cancelar
             </Button>
           </div>
         </div>
@@ -214,3 +200,4 @@ export function CheckoutModal({
     </Dialog>
   );
 }
+

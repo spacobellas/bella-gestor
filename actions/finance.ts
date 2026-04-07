@@ -310,6 +310,40 @@ export async function updatePaymentStatusAction(
 }
 
 /**
+ * Updates a sale's generic data (total, notes, status, etc).
+ */
+export async function updateSaleAction(id: string, updates: Partial<Sale>) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const payload: any = { updated_at: new Date().toISOString() };
+    if (updates.totalAmount !== undefined)
+      payload.total_amount = updates.totalAmount;
+    if (updates.notes !== undefined) payload.notes = updates.notes;
+    if (updates.status !== undefined) payload.status = updates.status;
+
+    const { data, error } = await supabase
+      .from("sales")
+      .update(payload)
+      .eq("id", parseInt(id))
+      .select(
+        `*, client:clients(full_name), professional:professionals!sales_professional_id_fkey(full_name), items:sale_items(*, professional:professionals(full_name), variant:service_variants(variant_name, service:services(name))), payments(*)`,
+      )
+      .single();
+
+    if (error) {
+      return { success: false, error: parseSupabaseError(error).description };
+    }
+
+    revalidatePath("/financeiro");
+    revalidatePath("/relatorios");
+    return { success: true, data: supabaseSaleToSale(data) };
+  } catch (error: any) {
+    console.error("Error in updateSaleAction:", error);
+    return { success: false, error: "Falha ao atualizar venda." };
+  }
+}
+
+/**
  * Process a manual payment from physical POS (Issue C, D, Fatal Flaw).
  * Resolves Rule 2 (Commission Tracking) by ensuring professional_id is persisted.
  */
