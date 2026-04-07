@@ -9,7 +9,7 @@ import {
   deleteCalendarEvent,
 } from "@/services/googleCalendarAppsScript";
 import { useData } from "@/lib/data-context";
-import type { Appointment, Professional } from "@/types";
+import type { Appointment, Sale, Payment } from "@/types";
 import { AppointmentStatus } from "@/types";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -21,9 +21,10 @@ import { Input } from "@/components/ui/input";
 import {
   ChevronLeft,
   ChevronRight,
-  Plus,
   Search,
   Calendar as CalendarIcon,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,6 +34,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ptBR } from "date-fns/locale";
+import { CheckoutModal } from "@/components/modals/checkout-modal";
 
 interface GoogleCalendarEvent {
   id: string;
@@ -41,13 +43,8 @@ interface GoogleCalendarEvent {
   start: { dateTime: string };
   end: { dateTime: string };
   attendees?: Array<{ email: string }>;
-}
-
-function professionalDisplay(p: Professional) {
-  const name = p.name ?? (p as { fullName?: string }).fullName;
-  return name && p.functionTitle
-    ? `${name} (${p.functionTitle})`
-    : (p.email ?? "Sem e-mail");
+  internalStatus?: AppointmentStatus; // Injected for Rule 3 logic
+  htmlLink?: string;
 }
 
 export default function AgendaPage() {
@@ -55,30 +52,30 @@ export default function AgendaPage() {
     clients,
     services,
     professionals,
+    appointments: internalAppointments,
+    sales,
     isLoading: dataLoading,
     refreshData,
     addAppointment,
   } = useData();
-  const [appointments, setAppointments] = useState<GoogleCalendarEvent[]>([]);
+
+  const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>(
+    [],
+  );
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-
-  const isLoading = dataLoading || isLoadingEvents;
-
-  // Filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterClientId, setFilterClientId] = useState("");
-  const [filterServiceId, setFilterServiceId] = useState("");
-  const [filterProfessionalId, setFilterProfessionalId] = useState("");
+  const [checkoutSale, setCheckoutSale] = useState<Sale | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] =
     useState<GoogleCalendarEvent | null>(null);
 
-  useEffect(() => {
-    void refreshData();
-  }, [refreshData]);
+  // Filters (Restored from main)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterClientId, setFilterClientId] = useState("");
+  const [filterServiceId, setFilterServiceId] = useState("");
+  const [filterProfessionalId, setFilterProfessionalId] = useState("");
 
   const fetchEvents = useCallback(async () => {
     setIsLoadingEvents(true);
@@ -101,7 +98,21 @@ export default function AgendaPage() {
         query,
       );
       if (resp?.success) {
-        setAppointments(resp.events || []);
+        // Map Google events to internal status (Rule 3 Alignment)
+        const events: GoogleCalendarEvent[] = (resp.events || []).map(
+          (ev: GoogleCalendarEvent) => {
+            const startTime = new Date(ev.start.dateTime).getTime();
+            const matchedAppt = internalAppointments?.find((a) => {
+              const aTime = new Date(a.startTime).getTime();
+              return Math.abs(aTime - startTime) < 60000; // Match within 1 minute
+            });
+            return {
+              ...ev,
+              internalStatus: matchedAppt?.status,
+            };
+          },
+        );
+        setCalendarEvents(events);
       } else {
         toast.error(resp?.error || "Erro ao carregar agendamentos");
       }
@@ -110,7 +121,7 @@ export default function AgendaPage() {
     } finally {
       setIsLoadingEvents(false);
     }
-  }, [currentDate, filterProfessionalId, professionals]);
+  }, [currentDate, filterProfessionalId, professionals, internalAppointments]);
 
   useEffect(() => {
     fetchEvents();
@@ -118,7 +129,7 @@ export default function AgendaPage() {
 
   const filteredEvents = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return appointments.filter((ev) => {
+    return calendarEvents.filter((ev) => {
       const desc = (ev.description || "").toLowerCase();
       const summary = (ev.summary || "").toLowerCase();
 
@@ -152,7 +163,7 @@ export default function AgendaPage() {
       return matchSearch && matchClient && matchService && matchProfessional;
     });
   }, [
-    appointments,
+    calendarEvents,
     searchQuery,
     filterClientId,
     filterServiceId,
@@ -161,6 +172,24 @@ export default function AgendaPage() {
     services,
     professionals,
   ]);
+
+  const handleCheckout = (ev: GoogleCalendarEvent) => {
+    const startTime = new Date(ev.start.dateTime).getTime();
+    const matchedAppt = internalAppointments?.find(
+      (a) => Math.abs(new Date(a.startTime).getTime() - startTime) < 60000,
+    );
+
+    if (matchedAppt) {
+      const sale = sales?.find((s) => s.appointmentId === matchedAppt.id);
+      if (sale) {
+        setCheckoutSale(sale);
+      } else {
+        toast.error("Venda não encontrada para este agendamento.");
+      }
+    } else {
+      toast.error("Agendamento interno não encontrado para vínculo POS.");
+    }
+  };
 
   const handleSave = async (values: {
     clientId: string;
@@ -202,31 +231,26 @@ export default function AgendaPage() {
       let res;
       if (selectedEvent) {
         res = await updateCalendarEvent(selectedEvent.id, googlePayload);
-        // For simplicity, we only sync new appointments to Supabase for now as per instructions.
-        // In a full implementation, we would also update the Supabase record here.
       } else {
-        res = await createCalendarEvent(googlePayload);
+        // Atomic Sync: DB First, then Google
+        const supabasePayload: Omit<Appointment, "id" | "created_at"> = {
+          clientId: values.clientId,
+          professionalId: values.professionalId,
+          startTime: new Date(values.startTime).toISOString(),
+          endTime: new Date(values.endTime).toISOString(),
+          status: AppointmentStatus.SCHEDULED,
+          notes: values.notes,
+          serviceVariants: [
+            { serviceVariantId: values.serviceVariantId, quantity: 1 },
+          ],
+          totalPrice: variant?.price || 0,
+        };
 
-        // Supabase Integration (Registers Appointment and Sale)
-        if (res?.success) {
-          const supabasePayload: Omit<Appointment, "id" | "created_at"> = {
-            clientId: values.clientId,
-            professionalId: values.professionalId,
-            startTime: new Date(values.startTime).toISOString(),
-            endTime: new Date(values.endTime).toISOString(),
-            status: AppointmentStatus.SCHEDULED,
-            notes: values.notes,
-            serviceVariants: [
-              {
-                serviceVariantId: values.serviceVariantId,
-                quantity: 1,
-              },
-            ],
-            totalPrice: variant?.price || 0,
-          };
-          if (addAppointment) {
-            await addAppointment(supabasePayload);
-          }
+        const supabaseRes = await addAppointment(supabasePayload);
+        if (supabaseRes) {
+          res = await createCalendarEvent(googlePayload);
+        } else {
+          throw new Error("Falha ao salvar no banco de dados.");
         }
       }
 
@@ -246,12 +270,16 @@ export default function AgendaPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este agendamento?")) return;
+    if (
+      !confirm(
+        "Tem certeza que deseja excluir este agendamento no Google Agenda?",
+      )
+    )
+      return;
     try {
       const res = await deleteCalendarEvent(id);
       if (res?.success) {
         toast.success("Agendamento excluído");
-        setIsModalOpen(false);
         fetchEvents();
       } else {
         toast.error(res?.error || "Erro ao excluir");
@@ -265,9 +293,10 @@ export default function AgendaPage() {
     <div className="space-y-4 p-4">
       <PageHeader
         title="Agenda"
-        description="Gerencie seus agendamentos sincronizados com Google Calendar"
+        description="Gerencie agendamentos sincronizados com Google Calendar"
       />
 
+      {/* Rich Filter Bar (Restored from main) */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
@@ -296,7 +325,7 @@ export default function AgendaPage() {
               placeholder="Filtrar Profissional"
               items={professionals.map((p) => ({
                 value: p.id,
-                label: professionalDisplay(p),
+                label: p.name || p.email,
               }))}
               value={filterProfessionalId}
               onChange={setFilterProfessionalId}
@@ -310,101 +339,96 @@ export default function AgendaPage() {
                 setFilterProfessionalId("");
               }}
             >
-              Limpar Filtros
+              Limpar
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-card p-4 rounded-lg border">
-        <div className="flex items-center justify-between w-full md:w-auto gap-4">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => {
-                const d = new Date(currentDate);
-                d.setDate(d.getDate() - 7);
-                setCurrentDate(d);
-              }}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3"
-              onClick={() => setCurrentDate(new Date())}
-            >
-              Hoje
-            </Button>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <CalendarIcon className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={currentDate}
-                  onSelect={(date) => date && setCurrentDate(date)}
-                  locale={ptBR}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => {
-                const d = new Date(currentDate);
-                d.setDate(d.getDate() + 7);
-                setCurrentDate(d);
-              }}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="md:hidden text-lg font-semibold truncate">
-            {currentDate
-              .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-              .toUpperCase()}
-          </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              const d = new Date(currentDate);
+              d.setDate(d.getDate() - 7);
+              setCurrentDate(d);
+            }}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentDate(new Date())}
+          >
+            Hoje
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon">
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={currentDate}
+                onSelect={(date) => date && setCurrentDate(date)}
+                locale={ptBR}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              const d = new Date(currentDate);
+              d.setDate(d.getDate() + 7);
+              setCurrentDate(d);
+            }}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => fetchEvents()}
+            disabled={isLoadingEvents}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isLoadingEvents ? "animate-spin" : ""}`}
+            />
+          </Button>
         </div>
-
-        <div className="hidden md:block text-lg font-semibold">
-          {currentDate
-            .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-            .toUpperCase()}
+        <div className="text-lg font-semibold uppercase">
+          {currentDate.toLocaleDateString("pt-BR", {
+            month: "long",
+            year: "numeric",
+          })}
         </div>
-
         <Button
-          className="w-full md:w-auto"
           onClick={() => {
             setSelectedEvent(null);
             setIsModalOpen(true);
           }}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agendamento
+          <Plus className="h-4 w-4 mr-2" /> Novo Agendamento
         </Button>
       </div>
 
       <CalendarView
         currentDate={currentDate}
         events={filteredEvents}
-        isLoading={isLoading}
+        isLoading={isLoadingEvents || dataLoading}
         onEdit={(ev) => {
           setSelectedEvent(ev);
           setIsModalOpen(true);
         }}
         onDelete={(ev) => handleDelete(ev.id)}
+        onCheckout={handleCheckout}
       />
 
       <AppointmentFormModal
@@ -412,11 +436,28 @@ export default function AgendaPage() {
         onOpenChange={setIsModalOpen}
         selectedEvent={selectedEvent}
         onSave={handleSave}
-        onDelete={handleDelete}
+        onDelete={(ev) => handleDelete(ev.id)}
         clients={clients}
         services={services}
         professionals={professionals}
       />
+
+      {checkoutSale && (
+        <CheckoutModal
+          isOpen={!!checkoutSale}
+          onClose={() => setCheckoutSale(null)}
+          saleId={Number(checkoutSale.id)}
+          clientName={checkoutSale.clientName || "Cliente"}
+          totalAmount={Number(checkoutSale.totalAmount)}
+          alreadyPaidAmount={(checkoutSale.payments || [])
+            .filter((p: Payment) => p.status === "paid")
+            .reduce((acc: number, p: Payment) => acc + Number(p.amount), 0)}
+          onSuccess={() => {
+            refreshData();
+            setCheckoutSale(null);
+          }}
+        />
+      )}
     </div>
   );
 }

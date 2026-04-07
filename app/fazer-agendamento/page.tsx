@@ -5,7 +5,7 @@ import {
   createCalendarEvent,
   listCalendarEvents,
 } from "@/services/googleCalendarAppsScript";
-import type { Professional, Appointment } from "@/types";
+import type { Appointment, Sale, Payment } from "@/types";
 import { AppointmentStatus } from "@/types";
 import { useData } from "@/lib/data-context";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,17 @@ import { useToast } from "@/hooks/use-toast";
 import { CalendarView } from "@/components/features/agenda/calendar-view";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
+import { CheckoutModal } from "@/components/modals/checkout-modal";
 import { ptBR } from "date-fns/locale";
+
+interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: { dateTime: string };
+  end: { dateTime: string };
+  attendees?: Array<{ email: string }>;
+}
 
 // ─── Reusable Combobox ────────────────────────────────────────────────────────
 function CustomCombobox({
@@ -143,6 +153,8 @@ export default function CreateAppointmentPage() {
     professionals,
     refreshData,
     addAppointment,
+    appointments: internalAppointments,
+    sales,
     isLoading: isDataLoading,
   } = useData();
 
@@ -188,6 +200,10 @@ export default function CreateAppointmentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Checkout state (Rule 3 Alignment)
+  const [checkoutSale, setCheckoutSale] = useState<Sale | null>(null);
+  const [isSearchingSale, setIsSearchingSale] = useState(false);
+
   useEffect(() => {
     if (allClients.length === 0 && !isDataLoading) {
       void refreshData();
@@ -206,7 +222,6 @@ export default function CreateAppointmentPage() {
         const end = new Date(start);
         end.setDate(end.getDate() + 7);
 
-        // For "own" mode, pass the professional's email as a search query
         const professional = professionals.find((p) => p.id === professionalId);
         const query =
           mode === "own" && professional?.email
@@ -232,7 +247,6 @@ export default function CreateAppointmentPage() {
 
         let events: CalendarEvent[] = result.events || [];
 
-        // Client-side filter: check attendees array AND professional name in description
         if (mode === "own" && professional?.email) {
           const profEmail = professional.email.toLowerCase();
           const profName = (professional.name || "").toLowerCase();
@@ -257,90 +271,84 @@ export default function CreateAppointmentPage() {
   );
 
   useEffect(() => {
-    if (!viewOpen) return;
-    if (viewMode === "own" && !filterProfId) {
-      setViewEvents([]);
-      return;
+    if (viewOpen) {
+      void fetchEvents(viewMode, filterProfId, currentDate);
     }
-    void fetchEvents(viewMode, filterProfId, currentDate);
   }, [viewOpen, viewMode, filterProfId, currentDate, fetchEvents]);
 
-  // ── Filtered events for display ───────────────────────────────────────────
-  const filteredEvents = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    if (!q) return viewEvents;
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleOpenForm = () => setFormOpen(true);
+  const handleOpenViewChoice = () => setViewChoiceOpen(true);
 
-    return viewEvents.filter((ev) => {
-      const desc = (ev.description || "").toLowerCase();
-      const summary = (ev.summary || "").toLowerCase();
-      return summary.includes(q) || desc.includes(q);
-    });
-  }, [viewEvents, searchQuery]);
-
-  // ── Choice dialog handlers ────────────────────────────────────────────────
   function handleChooseAll() {
-    setViewChoiceOpen(false);
     setViewMode("all");
     setFilterProfId("");
+    setViewChoiceOpen(false);
     setViewOpen(true);
   }
 
   function handleChooseOwn() {
-    setViewChoiceOpen(false);
     setViewMode("own");
     setFilterProfId("");
+    setViewChoiceOpen(false);
     setViewOpen(true);
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function professionalDisplay(p: Professional) {
-    const name = p.name ?? (p as { fullName?: string }).fullName;
-    return name && p.functionTitle
-      ? `${name} (${p.functionTitle})`
-      : (p.email ?? "Sem e-mail");
-  }
+  const handleCheckout = async (ev: GoogleCalendarEvent) => {
+    setIsSearchingSale(true);
+    try {
+      const parseField = (desc: string | undefined, label: string) => {
+        const line = (desc || "").split("\n").find((p) => p.startsWith(label));
+        return line ? line.replace(label, "").trim() : "";
+      };
 
-  // ── Create appointment ────────────────────────────────────────────────────
-  const selectedService = useMemo(
-    () => services.find((s) => s.id === formData.serviceId),
-    [services, formData.serviceId],
-  );
+      const clientName = parseField(ev.description, "Cliente: ");
+      const startTime = new Date(ev.start.dateTime).getTime();
 
-  const availableVariants = useMemo(
-    () =>
-      (selectedService?.variants || []).map((v) => ({
-        value: v.id,
-        label: `${v.variantName} (${v.duration} min) - R$${v.price.toFixed(2)}`,
-      })),
-    [selectedService],
-  );
+      const matchedAppt = internalAppointments?.find((a) => {
+        const aTime = new Date(a.startTime).getTime();
+        const aClient = allClients.find((c) => c.id === a.clientId)?.name;
+        return Math.abs(aTime - startTime) < 60000 && aClient === clientName;
+      });
 
-  const clientItems = useMemo(
-    () =>
-      (clients || []).map((c) => {
-        const phoneLabel = c.phone ? formatBrazilianPhone(c.phone) : "";
-        return {
-          value: c.id,
-          label: c.name ? `${c.name} - ${phoneLabel}` : `(Sem nome)`,
-          hint: c.phone ? unformatPhone(c.phone) : "",
-        };
-      }),
-    [clients],
-  );
+      if (!matchedAppt) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Vínculo interno não encontrado.",
+        });
+        return;
+      }
 
-  const serviceItems = useMemo(
-    () => (services || []).map((s) => ({ value: s.id, label: s.name })),
-    [services],
-  );
+      const sale = sales?.find((s) => s.appointmentId === matchedAppt.id);
+      if (!sale) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Venda não encontrada para este agendamento.",
+        });
+        return;
+      }
 
-  const professionalItems = useMemo(
-    () =>
-      professionals.map((p) => ({
-        value: p.id,
-        label: professionalDisplay(p),
-      })),
-    [professionals],
-  );
+      if (sale.status === "paid") {
+        toast({
+          title: "Informativo",
+          description: "Este agendamento já consta como pago.",
+        });
+        return;
+      }
+
+      setCheckoutSale(sale);
+    } catch (err) {
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : "Erro desconhecido ao buscar dados financeiros";
+      toast({ variant: "destructive", title: "Erro", description: errorMsg });
+    } finally {
+      setIsSearchingSale(false);
+    }
+  };
 
   async function onSave() {
     if (
@@ -361,9 +369,7 @@ export default function CreateAppointmentPage() {
 
     const c = clients.find((x) => x.id === formData.clientId);
     const s = services.find((x) => x.id === formData.serviceId);
-    const sv = selectedService?.variants?.find(
-      (x) => x.id === formData.serviceVariantId,
-    );
+    const sv = s?.variants?.find((x) => x.id === formData.serviceVariantId);
     const prof = professionals.find((x) => x.id === formData.professionalId);
 
     if (!c || !s || !sv) {
@@ -371,10 +377,30 @@ export default function CreateAppointmentPage() {
       return;
     }
 
-    const profLine = prof ? `\nProfissional: ${professionalDisplay(prof)}` : "";
+    const profLine = prof ? `\nProfissional: ${prof.name || prof.email}` : "";
     setSaving(true);
 
     try {
+      // 1. DB insertion FIRST (atomic RPC via addAppointment)
+      const supabasePayload: Omit<Appointment, "id" | "created_at"> = {
+        clientId: formData.clientId,
+        professionalId: formData.professionalId,
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+        status: AppointmentStatus.SCHEDULED,
+        notes: formData.notes,
+        serviceVariants: [
+          { serviceVariantId: formData.serviceVariantId, quantity: 1 },
+        ],
+        totalPrice: sv.price,
+      };
+
+      const supabaseRes = await addAppointment(supabasePayload);
+      if (!supabaseRes) {
+        throw new Error("Erro ao registrar agendamento no banco de dados.");
+      }
+
+      // 2. Google Calendar sync SECOND
       const googlePayload = {
         summary: `${c.name} - ${s.name} (${sv.variantName})`,
         description: `Cliente: ${c.name}\nTelefone: ${c.phone}\nServiço: ${s.name}\nTipo: ${sv.variantName}${profLine}${
@@ -390,39 +416,26 @@ export default function CreateAppointmentPage() {
       };
 
       const googleRes = await createCalendarEvent(googlePayload);
-      if (!googleRes?.success)
-        throw new Error(
-          googleRes?.error || "Erro ao criar agendamento no Google",
+      if (!googleRes?.success) {
+        console.error(
+          "Google sync failed, but DB record exists:",
+          googleRes?.error,
         );
-
-      const supabasePayload: Omit<Appointment, "id" | "created_at"> = {
-        clientId: formData.clientId,
-        professionalId: formData.professionalId,
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: formData.endTime
-          ? new Date(formData.endTime).toISOString()
-          : new Date(
-              new Date(formData.startTime).getTime() +
-                (sv.duration || 30) * 60000,
-            ).toISOString(),
-        status: AppointmentStatus.SCHEDULED,
-        notes: formData.notes,
-        serviceVariants: [
-          { serviceVariantId: formData.serviceVariantId, quantity: 1 },
-        ],
-        totalPrice: sv.price,
-      };
-
-      const supabaseRes = await addAppointment(supabasePayload);
-      if (!supabaseRes)
-        throw new Error("Erro ao registrar agendamento no banco de dados.");
+        toast({
+          variant: "destructive",
+          title: "Erro no Google Calendar",
+          description:
+            "O agendamento foi salvo no banco, mas não foi sincronizado com o Google.",
+        });
+      }
 
       toast({
         title: "Agendamento criado!",
-        description: `${c.name} agendado para ${new Date(formData.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`,
+        description: `${c.name} agendado para ${new Date(formData.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}. Venda pendente gerada automaticamente.`,
       });
       setFormOpen(false);
       setFormData(initialFormState);
+      refreshData();
     } catch (e: unknown) {
       const errorMessage =
         e instanceof Error
@@ -437,6 +450,65 @@ export default function CreateAppointmentPage() {
       setSaving(false);
     }
   }
+
+  // ── Mappings ──────────────────────────────────────────────────────────────
+  const clientItems = useMemo(
+    () =>
+      (clients || []).map((c) => {
+        const phoneLabel = c.phone ? formatBrazilianPhone(c.phone) : "";
+        return {
+          value: c.id,
+          label: c.name ? `${c.name} - ${phoneLabel}` : `(Sem nome)`,
+          hint: c.phone ? unformatPhone(c.phone) : "",
+        };
+      }),
+    [clients],
+  );
+
+  const serviceItems = useMemo(
+    () => (services || []).map((s) => ({ value: s.id, label: s.name })),
+    [services],
+  );
+
+  const selectedService = useMemo(
+    () => services.find((s) => s.id === formData.serviceId),
+    [services, formData.serviceId],
+  );
+
+  const availableVariants = useMemo(
+    () =>
+      (selectedService?.variants || []).map((v) => ({
+        value: v.id,
+        label: `${v.variantName} (${v.duration} min) - R$${v.price.toFixed(2)}`,
+      })),
+    [selectedService],
+  );
+
+  function professionalDisplay(p: Professional) {
+    const name = p.name ?? (p as { fullName?: string }).fullName;
+    return name && p.functionTitle
+      ? `${name} (${p.functionTitle})`
+      : (p.email ?? "Sem e-mail");
+  }
+
+  const professionalItems = useMemo(
+    () =>
+      professionals.map((p) => ({
+        value: p.id,
+        label: professionalDisplay(p),
+      })),
+    [professionals],
+  );
+
+  const filteredEvents = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return viewEvents;
+    return viewEvents.filter(
+      (ev) =>
+        ev.summary.toLowerCase().includes(q) ||
+        (ev.description || "").toLowerCase().includes(q),
+    );
+  }, [viewEvents, searchQuery]);
 
   if (isDataLoading && allClients.length === 0) {
     return (
@@ -456,29 +528,27 @@ export default function CreateAppointmentPage() {
           Agendamentos
         </h1>
         <p className="text-lg sm:text-xl text-muted-foreground">
-          Crie um novo agendamento ou visualize os agendamentos existentes no
-          Spaço Bellas.
+          Crie um novo agendamento ou visualize os horários existentes no Spaço
+          Bellas.
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md px-4">
         <Button
           size="lg"
-          onClick={() => setFormOpen(true)}
+          onClick={handleOpenForm}
           className="w-full sm:flex-1 h-16 text-lg font-semibold shadow-xl hover:scale-105 transition-transform"
         >
-          <CalendarPlus className="mr-3 h-6 w-6" />
-          Novo Agendamento
+          <CalendarPlus className="mr-3 h-6 w-6" /> Novo Agendamento
         </Button>
 
         <Button
           size="lg"
           variant="outline"
-          onClick={() => setViewChoiceOpen(true)}
+          onClick={handleOpenViewChoice}
           className="w-full sm:flex-1 h-16 text-lg font-semibold shadow-md hover:bg-muted transition-colors"
         >
-          <CalendarSearch className="mr-3 h-6 w-6" />
-          Ver Agenda
+          <CalendarSearch className="mr-3 h-6 w-6" /> Ver Agenda
         </Button>
       </div>
 
@@ -540,7 +610,6 @@ export default function CreateAppointmentPage() {
           </DialogHeader>
 
           <div className="flex-1 overflow-auto space-y-4 pr-1">
-            {/* Calendar Controls (similar to /agenda) */}
             <Card>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -582,7 +651,6 @@ export default function CreateAppointmentPage() {
                     >
                       Hoje
                     </Button>
-
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -603,7 +671,6 @@ export default function CreateAppointmentPage() {
                         />
                       </PopoverContent>
                     </Popover>
-
                     <Button
                       variant="outline"
                       size="icon"
@@ -636,10 +703,10 @@ export default function CreateAppointmentPage() {
                 currentDate={currentDate}
                 events={filteredEvents}
                 isLoading={loadingEvents}
+                onCheckout={handleCheckout}
               />
             )}
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewOpen(false)}>
               Fechar
@@ -654,7 +721,8 @@ export default function CreateAppointmentPage() {
           <DialogHeader>
             <DialogTitle>Novo agendamento</DialogTitle>
             <DialogDescription>
-              Preencha os dados abaixo para sincronizar com o Google Calendar.
+              Preencha os dados abaixo para sincronizar com o Google Calendar e
+              gerar a venda pendente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -758,19 +826,40 @@ export default function CreateAppointmentPage() {
             <Button onClick={onSave} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
                 </>
               ) : (
                 <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Criar Agendamento
+                  <Plus className="mr-2 h-4 w-4" /> Criar Agendamento
                 </>
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isSearchingSale && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[100]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {checkoutSale && (
+        <CheckoutModal
+          isOpen={!!checkoutSale}
+          onClose={() => setCheckoutSale(null)}
+          saleId={Number(checkoutSale.id)}
+          clientName={checkoutSale.clientName || "Cliente"}
+          totalAmount={Number(checkoutSale.totalAmount)}
+          alreadyPaidAmount={(checkoutSale.payments || [])
+            .filter((p: Payment) => p.status === "paid")
+            .reduce((acc: number, p: Payment) => acc + Number(p.amount), 0)}
+          onSuccess={(isFullyPaid) => {
+            refreshData();
+            if (isFullyPaid) setCheckoutSale(null);
+          }}
+        />
+      )}
     </div>
   );
 }

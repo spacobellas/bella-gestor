@@ -50,6 +50,7 @@ import {
   updateSaleStatusAction,
   createPaymentAction,
   updatePaymentStatusAction,
+  updateSaleAction,
   NewSale,
 } from "@/actions/finance";
 import {
@@ -154,6 +155,7 @@ interface DataContextType {
     status: SaleStatus,
     updates?: Partial<Sale>,
   ) => Promise<Sale | null>;
+  updateSale: (id: string, sale: Partial<Sale>) => Promise<Sale | null>;
   createSale: (sale: NewSale) => Promise<Sale | null>;
 
   // Professionals
@@ -400,6 +402,30 @@ export function DataProvider({
         err instanceof Error
           ? err.message
           : "Não foi possível atualizar o status da venda.";
+      setError(msg);
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+      return null;
+    }
+  };
+
+  const updateSale = async (
+    id: string,
+    sale: Partial<Sale>,
+  ): Promise<Sale | null> => {
+    try {
+      const res = await updateSaleAction(id, sale);
+      if (!res.success) throw new Error(res.error);
+      await refreshData();
+      toast({
+        title: "Venda atualizada",
+        description: "Os dados da venda foram atualizados.",
+      });
+      return res.data as unknown as Sale;
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível atualizar a venda.";
       setError(msg);
       toast({ title: "Erro", description: msg, variant: "destructive" });
       return null;
@@ -1030,6 +1056,7 @@ export function DataProvider({
     createPayment,
     cancelPayment,
     updateSaleStatus,
+    updateSale,
     createSale,
 
     // professionals
